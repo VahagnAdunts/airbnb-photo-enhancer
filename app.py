@@ -86,6 +86,8 @@ app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 stripe_secret_key = os.getenv('STRIPE_SECRET_KEY', '')
 if stripe_secret_key:
     try:
+        # Sanitize the API key - remove whitespace, newlines, etc.
+        stripe_secret_key = stripe_secret_key.strip()
         stripe.api_key = stripe_secret_key
         app.config['STRIPE_SECRET_KEY'] = stripe_secret_key
         # Verify Stripe is fully initialized and checkout is available
@@ -752,10 +754,18 @@ def create_checkout_session():
         logger.error("Stripe not configured - STRIPE_SECRET_KEY missing from environment")
         return jsonify({'error': 'Payment system not configured. Please set STRIPE_SECRET_KEY environment variable.'}), 500
     
-    # Ensure Stripe API key is set
+    # Sanitize the API key - remove whitespace, newlines, etc.
+    stripe_secret = stripe_secret.strip()
+    
+    # Validate API key format
+    if not stripe_secret.startswith(('sk_live_', 'sk_test_')):
+        logger.error(f"Invalid Stripe API key format (doesn't start with sk_live_ or sk_test_)")
+        return jsonify({'error': 'Payment system error. Invalid API key format. Please contact support.'}), 500
+    
+    # Ensure Stripe API key is set with sanitized value
     if not stripe.api_key or stripe.api_key != stripe_secret:
         stripe.api_key = stripe_secret
-        logger.info("Setting Stripe API key")
+        logger.info(f"Setting Stripe API key (key type: {'live' if stripe_secret.startswith('sk_live_') else 'test'})")
     
     # Verify Stripe module is properly loaded
     if not hasattr(stripe, 'checkout'):
