@@ -849,6 +849,11 @@ def payment_cancel():
 @app.route('/api/payment/webhook', methods=['POST'])
 def stripe_webhook():
     """Handle Stripe webhook events"""
+    # Check if Stripe is configured
+    if not app.config['STRIPE_SECRET_KEY'] or not stripe.api_key:
+        logger.error("Stripe not configured - webhook cannot be processed")
+        return jsonify({'error': 'Payment system not configured'}), 500
+    
     payload = request.get_data(as_text=True)
     sig_header = request.headers.get('Stripe-Signature')
     
