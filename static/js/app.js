@@ -247,7 +247,10 @@ async function handleFiles(files) {
             progressItem.element.classList.add('completed');
 
             // Add to results
+            // If image_id/photo_id exists, this is a saved photo that requires payment
+            // If no id, it's a preview photo (free download)
             enhancedImages.push({
+                id: result.image_id || result.photo_id || undefined, // Use image_id from backend
                 originalName: file.name,
                 enhancedUrl: result.enhanced_image_url,
                 originalUrl: result.original_image_url,
@@ -517,14 +520,16 @@ if (downloadAllBtn) {
         const photoIds = selectedImages.map(img => img.id).filter(id => id !== undefined && id !== null);
         
         if (photoIds.length > 0) {
-            // These are saved photos - payment required
-            const paymentRequired = await checkPaymentStatus(photoIds);
+            // These are saved photos - payment is ALWAYS required
+            // Check if payment has already been completed
+            const paymentCompleted = await checkPaymentStatus(photoIds);
             
-            if (!paymentRequired) {
-                // Payment required - redirect to payment
+            if (!paymentCompleted) {
+                // Payment required but not completed - redirect to payment
                 await initiatePayment(photoIds);
                 return;
             }
+            // If payment is completed, continue to download below
         }
         
         // Payment completed or not required (preview photos) - proceed with download
@@ -543,7 +548,7 @@ if (downloadAllBtn) {
     });
 }
 
-// Check if payment is required and completed
+// Check if payment has been completed for these photos
 async function checkPaymentStatus(photoIds) {
     try {
         const response = await fetch('/api/payment/check-status', {
@@ -556,11 +561,15 @@ async function checkPaymentStatus(photoIds) {
         
         if (response.ok) {
             const data = await response.json();
-            return data.paid === true;
+            // Return true only if payment is confirmed as completed
+            return data.success === true && data.paid === true;
         }
+        // If check fails, assume payment not completed (require payment)
+        console.warn('Payment status check failed, requiring payment');
         return false;
     } catch (error) {
         console.error('Error checking payment status:', error);
+        // On error, assume payment not completed (require payment)
         return false;
     }
 }
