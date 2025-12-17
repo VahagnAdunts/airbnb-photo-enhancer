@@ -785,63 +785,61 @@ def create_checkout_session():
         
         # Create Stripe Checkout Session
         try:
-            # Attempt to create checkout session with comprehensive error handling
-            try:
-                checkout_session = stripe.checkout.Session.create(
-                    payment_method_types=['card'],
-                    line_items=[{
-                        'price_data': {
-                            'currency': 'usd',
-                            'product_data': {
-                                'name': f'Enhanced Photo Download ({photo_count} photo{"s" if photo_count > 1 else ""})',
-                                'description': f'Download {photo_count} AI-enhanced photo{"s" if photo_count > 1 else ""}',
-                            },
-                            'unit_amount': PHOTO_PRICE_CENTS,
+            checkout_session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {
+                            'name': f'Enhanced Photo Download ({photo_count} photo{"s" if photo_count > 1 else ""})',
+                            'description': f'Download {photo_count} AI-enhanced photo{"s" if photo_count > 1 else ""}',
                         },
-                        'quantity': photo_count,
-                    }],
-                    mode='payment',
-                    success_url=request.host_url + 'payment/success?session_id={CHECKOUT_SESSION_ID}',
-                    cancel_url=request.host_url + 'payment/cancel',
-                    customer_email=current_user.email,
-                    metadata={
-                        'user_id': str(current_user.id),
-                        'photo_count': str(photo_count),
-                        'photo_ids': json.dumps(photo_ids)
-                    }
-                )
-                
-                # Create payment record
-                payment = Payment(
-                    user_id=current_user.id,
-                    stripe_session_id=checkout_session.id,
-                    amount=total_amount,
-                    currency='usd',
-                    photo_count=photo_count,
-                    photo_ids=json.dumps(photo_ids),
-                    status='pending'
-                )
-                db.session.add(payment)
-                db.session.commit()
-                
-                logger.info(f"Created checkout session {checkout_session.id} for user {current_user.id}, {photo_count} photos")
-                
-                return jsonify({
-                    'success': True,
-                    'sessionId': checkout_session.id,
-                    'url': checkout_session.url
-                })
-                
-            except AttributeError as ae:
-                # Handle case where stripe.checkout is None
-                logger.error(f"AttributeError creating checkout session: {ae}")
-                logger.error(f"stripe.checkout value: {stripe.checkout}")
-                logger.error(f"stripe.api_key set: {bool(stripe.api_key)}")
-                logger.error(f"Stripe version: {getattr(stripe, '__version__', 'unknown')}")
-                return jsonify({'error': 'Payment system error. Stripe checkout module not available. Please contact support.'}), 500
-            except stripe.error.StripeError as e:
-                logger.error(f"Stripe error creating checkout session: {e}")
-                return jsonify({'error': f'Payment processing error: {str(e)}'}), 500
+                        'unit_amount': PHOTO_PRICE_CENTS,
+                    },
+                    'quantity': photo_count,
+                }],
+                mode='payment',
+                success_url=request.host_url + 'payment/success?session_id={CHECKOUT_SESSION_ID}',
+                cancel_url=request.host_url + 'payment/cancel',
+                customer_email=current_user.email,
+                metadata={
+                    'user_id': str(current_user.id),
+                    'photo_count': str(photo_count),
+                    'photo_ids': json.dumps(photo_ids)
+                }
+            )
+            
+            # Create payment record
+            payment = Payment(
+                user_id=current_user.id,
+                stripe_session_id=checkout_session.id,
+                amount=total_amount,
+                currency='usd',
+                photo_count=photo_count,
+                photo_ids=json.dumps(photo_ids),
+                status='pending'
+            )
+            db.session.add(payment)
+            db.session.commit()
+            
+            logger.info(f"Created checkout session {checkout_session.id} for user {current_user.id}, {photo_count} photos")
+            
+            return jsonify({
+                'success': True,
+                'sessionId': checkout_session.id,
+                'url': checkout_session.url
+            })
+            
+        except AttributeError as ae:
+            # Handle case where stripe.checkout is None
+            logger.error(f"AttributeError creating checkout session: {ae}")
+            logger.error(f"stripe.checkout value: {stripe.checkout}")
+            logger.error(f"stripe.api_key set: {bool(stripe.api_key)}")
+            logger.error(f"Stripe version: {getattr(stripe, '__version__', 'unknown')}")
+            return jsonify({'error': 'Payment system error. Stripe checkout module not available. Please contact support.'}), 500
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe error creating checkout session: {e}")
+            return jsonify({'error': f'Payment processing error: {str(e)}'}), 500
             
     except Exception as e:
         logger.error(f"Error creating checkout session: {e}", exc_info=True)
