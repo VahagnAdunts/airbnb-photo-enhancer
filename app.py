@@ -49,9 +49,17 @@ app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 # Initialize Stripe
 stripe_secret_key = os.getenv('STRIPE_SECRET_KEY', '')
 if stripe_secret_key:
-    stripe.api_key = stripe_secret_key
-    app.config['STRIPE_SECRET_KEY'] = stripe_secret_key
-    logger.info(f"Stripe initialized successfully (key starts with: {stripe_secret_key[:7]}...)")
+    try:
+        stripe.api_key = stripe_secret_key
+        app.config['STRIPE_SECRET_KEY'] = stripe_secret_key
+        # Verify Stripe is fully initialized
+        if hasattr(stripe, 'checkout') and stripe.checkout is not None:
+            logger.info(f"Stripe initialized successfully (key starts with: {stripe_secret_key[:7]}...)")
+        else:
+            logger.warning("Stripe API key set but checkout module not available")
+    except Exception as e:
+        logger.error(f"Error initializing Stripe: {e}")
+        app.config['STRIPE_SECRET_KEY'] = ''
 else:
     logger.warning("STRIPE_SECRET_KEY not set - payment features will not work")
     app.config['STRIPE_SECRET_KEY'] = ''
@@ -702,6 +710,17 @@ def create_checkout_session():
         logger.error("Stripe API key still not initialized after reinit attempt")
         return jsonify({'error': 'Payment system not configured. Please set STRIPE_SECRET_KEY environment variable.'}), 500
     
+    # Verify Stripe checkout module is available
+    if not hasattr(stripe, 'checkout') or stripe.checkout is None:
+        logger.error("Stripe checkout module not available - attempting to reinitialize")
+        # Try to reinitialize by re-importing or setting key again
+        stripe.api_key = stripe_secret
+        import importlib
+        importlib.reload(stripe)
+        if not hasattr(stripe, 'checkout') or stripe.checkout is None:
+            logger.error("Stripe checkout module still not available after reload")
+            return jsonify({'error': 'Payment system error. Please contact support.'}), 500
+    
     try:
         data = request.get_json()
         photo_ids = data.get('photo_ids', [])
@@ -728,6 +747,23 @@ def create_checkout_session():
         
         # Create Stripe Checkout Session
         try:
+            # Verify Stripe checkout is available before using it
+            if not hasattr(stripe, 'checkout'):
+                logger.error("Stripe module missing 'checkout' attribute")
+                return jsonify({'error': 'Payment system error. Please contact support.'}), 500
+            
+            if stripe.checkout is None:
+                logger.error("stripe.checkout is None - Stripe not properly initialized")
+                # Try to reinitialize
+                stripe.api_key = stripe_secret
+                if stripe.checkout is None:
+                    logger.error("stripe.checkout still None after reinit")
+                    return jsonify({'error': 'Payment system error. Please contact support.'}), 500
+            
+            if not hasattr(stripe.checkout, 'Session'):
+                logger.error("stripe.checkout.Session not available")
+                return jsonify({'error': 'Payment system error. Please contact support.'}), 500
+            
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=[{
