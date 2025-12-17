@@ -49,6 +49,9 @@ app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 # Initialize Stripe
 if app.config['STRIPE_SECRET_KEY']:
     stripe.api_key = app.config['STRIPE_SECRET_KEY']
+    logger.info("Stripe initialized successfully")
+else:
+    logger.warning("STRIPE_SECRET_KEY not set - payment features will not work")
 
 # Price per photo in cents ($0.10 = 10 cents)
 PHOTO_PRICE_CENTS = 10
@@ -680,10 +683,16 @@ def delete_photo(photo_id):
 @login_required
 def create_checkout_session():
     """Create a Stripe Checkout Session for photo downloads"""
+    # Check if Stripe is configured BEFORE trying to use it
+    if not app.config['STRIPE_SECRET_KEY']:
+        logger.error("Stripe not configured - STRIPE_SECRET_KEY missing")
+        return jsonify({'error': 'Payment system not configured. Please set STRIPE_SECRET_KEY environment variable.'}), 500
+    
+    if not stripe.api_key:
+        logger.error("Stripe API key not initialized")
+        return jsonify({'error': 'Payment system not configured. Please set STRIPE_SECRET_KEY environment variable.'}), 500
+    
     try:
-        if not app.config['STRIPE_SECRET_KEY']:
-            return jsonify({'error': 'Stripe is not configured'}), 500
-        
         data = request.get_json()
         photo_ids = data.get('photo_ids', [])
         
