@@ -17,6 +17,19 @@ from image_enhancer import ImageEnhancer
 from models import db, User, EnhancedImage, Payment
 import stripe
 
+# Verify Stripe library is properly installed
+try:
+    stripe_version = getattr(stripe, '__version__', 'unknown')
+    logger.info(f"Stripe library loaded, version: {stripe_version}")
+    if not hasattr(stripe, 'checkout'):
+        logger.error("CRITICAL: Stripe library missing 'checkout' attribute - library may be corrupted or incorrectly installed")
+    elif stripe.checkout is None:
+        logger.error("CRITICAL: stripe.checkout is None - this indicates a serious Stripe library initialization issue")
+    else:
+        logger.info("Stripe checkout module is available")
+except Exception as e:
+    logger.error(f"CRITICAL: Error verifying Stripe library: {e}")
+
 # Load environment variables from .env file
 load_dotenv()
 
