@@ -35,17 +35,39 @@ logger = logging.getLogger(__name__)
 
 # Verify Stripe library is properly installed (after logger is initialized)
 try:
-    stripe_version = getattr(stripe, '__version__', 'unknown')
-    logger.info(f"Stripe library loaded, version: {stripe_version}")
-    if not hasattr(stripe, 'checkout'):
-        logger.error("CRITICAL: Stripe library missing 'checkout' attribute - library may be corrupted or incorrectly installed")
-    elif stripe.checkout is None:
-        logger.error("CRITICAL: stripe.checkout is None - this indicates a serious Stripe library initialization issue")
-        logger.error("This may be caused by: 1) Corrupted Stripe installation, 2) Version incompatibility, 3) Import order issues")
-    else:
-        logger.info("Stripe checkout module is available")
+    # Check if stripe module is actually the Stripe library
+    stripe_module_path = getattr(stripe, '__file__', None)
+    stripe_version = getattr(stripe, '__version__', None)
+    
+    logger.info(f"Stripe module path: {stripe_module_path}")
+    logger.info(f"Stripe library version: {stripe_version}")
+    
+    # Try to access checkout directly to see if it exists
+    try:
+        checkout_attr = getattr(stripe, 'checkout', None)
+        logger.info(f"stripe.checkout type: {type(checkout_attr)}")
+        logger.info(f"stripe.checkout value: {checkout_attr}")
+        
+        if checkout_attr is None:
+            logger.error("CRITICAL: stripe.checkout is None")
+            logger.error("Attempting to diagnose Stripe installation issue...")
+            # Try to check if it's a namespace issue
+            try:
+                import stripe.checkout as checkout_module
+                logger.info(f"Direct import of stripe.checkout successful: {checkout_module}")
+                # If direct import works, reassign it
+                stripe.checkout = checkout_module
+                logger.info("Fixed: Reassigned stripe.checkout from direct import")
+            except ImportError as ie:
+                logger.error(f"Direct import of stripe.checkout failed: {ie}")
+            except Exception as fix_error:
+                logger.error(f"Error trying to fix checkout: {fix_error}")
+        else:
+            logger.info("Stripe checkout module is available")
+    except AttributeError as ae:
+        logger.error(f"CRITICAL: Cannot access stripe.checkout: {ae}")
 except Exception as e:
-    logger.error(f"CRITICAL: Error verifying Stripe library: {e}")
+    logger.error(f"CRITICAL: Error verifying Stripe library: {e}", exc_info=True)
 
 app = Flask(__name__, static_folder='static', template_folder='.')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -742,16 +764,35 @@ def create_checkout_session():
     
     if stripe.checkout is None:
         logger.error("stripe.checkout is None - Stripe library initialization issue")
-        # Try to re-import stripe module
+        # Try multiple methods to fix the checkout module
         try:
-            import importlib
-            importlib.reload(stripe)
-            stripe.api_key = stripe_secret
+            # Method 1: Try direct import
+            try:
+                import stripe.checkout as checkout_module
+                stripe.checkout = checkout_module
+                logger.info("Fixed stripe.checkout using direct import")
+            except ImportError:
+                # Method 2: Try reloading the module
+                import importlib
+                importlib.reload(stripe)
+                stripe.api_key = stripe_secret
+                # Method 3: Try accessing via getattr with default
+                if stripe.checkout is None:
+                    # Try to manually construct the checkout namespace
+                    try:
+                        from stripe import resources
+                        if hasattr(resources, 'checkout'):
+                            stripe.checkout = resources.checkout
+                            logger.info("Fixed stripe.checkout using resources module")
+                    except:
+                        pass
+                
             if stripe.checkout is None:
-                logger.error("stripe.checkout still None after reload")
-                return jsonify({'error': 'Payment system error. Please contact support.'}), 500
+                logger.error("stripe.checkout still None after all fix attempts")
+                logger.error("This indicates Stripe library is not properly installed")
+                return jsonify({'error': 'Payment system error. Stripe library installation issue. Please contact support.'}), 500
         except Exception as reload_error:
-            logger.error(f"Error reloading Stripe module: {reload_error}")
+            logger.error(f"Error attempting to fix Stripe checkout: {reload_error}", exc_info=True)
             return jsonify({'error': 'Payment system error. Please contact support.'}), 500
     
     # Verify Session class exists
