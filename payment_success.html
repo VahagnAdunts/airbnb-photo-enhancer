@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - Elevance AI</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','{{ gtm_container_id }}');</script>
+    <!-- End Google Tag Manager -->
+    {% endif %}
+</head>
+<body class="home-page">
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    {% endif %}
+    
+    <nav class="navbar navbar-minimal">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/" class="nav-brand-link">
+                    <h2>Elevance AI</h2>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="pricing-section" style="padding-top: 4rem;">
+        <div class="container-narrow">
+            <div style="text-align: center; max-width: 600px; margin: 0 auto;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+                <h1 style="font-size: 2rem; font-weight: 300; margin-bottom: 1rem; letter-spacing: -1px;">Payment Successful!</h1>
+                <p style="color: var(--text-secondary); font-size: 1.125rem; margin-bottom: 2rem;">
+                    Thank you for your payment. Your photos are now ready to download.
+                </p>
+                {% if payment %}
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem; text-align: left;">
+                    <p style="margin-bottom: 0.5rem;"><strong>Payment Details:</strong></p>
+                    <p style="margin-bottom: 0.25rem; color: var(--text-secondary);">Photos: {{ payment.photo_count }}</p>
+                    <p style="margin-bottom: 0.25rem; color: var(--text-secondary);">Amount: ${{ "%.2f"|format(payment.amount / 100) }}</p>
+                    <p style="margin-bottom: 0; color: var(--text-secondary);">Status: <span style="color: #10b981;">{{ payment.status|title }}</span></p>
+                </div>
+                {% endif %}
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <a href="/dashboard" class="btn btn-primary btn-large">Go to Dashboard</a>
+                    <a href="/" class="btn btn-outline btn-large">Enhance More Photos</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="home-footer">
+        <div class="container-narrow">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Elevance AI</h3>
+                    <p>AI-powered photo enhancement for real estate professionals.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Elevance AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
+
+

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - Elevance AI</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    {% if gtm_container_id %}
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ gtm_container_id }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ gtm_container_id }}');
+        window.GTM_CONTAINER_ID = '{{ gtm_container_id }}';
+    </script>
+    {% endif %}
+</head>
+<body>
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    {% endif %}
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/" class="nav-brand-link">
+                    <h2>Elevance AI</h2>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/features" class="nav-link">Features</a>
+                <a href="/pricing" class="nav-link">Pricing</a>
+                <a href="/login" class="nav-link">Sign In</a>
+                <a href="/signup" class="btn btn-primary btn-sm">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="legal-page">
+            <h1>About Elevance AI</h1>
+
+            <section>
+                <h2>Our Mission</h2>
+                <p>Elevance AI is dedicated to empowering real estate professionals, property managers, and hosts with cutting-edge AI technology to create stunning, professional-quality listing photos. We believe that exceptional photography should be accessible to everyone, not just those with expensive equipment or professional photographers.</p>
+            </section>
+
+            <section>
+                <h2>What We Do</h2>
+                <p>We provide AI-powered photo enhancement services specifically designed for property listings on platforms like Airbnb, Booking.com, VRBO, and other rental sites. Our advanced AI technology analyzes each photo and applies professional enhancements including:</p>
+                <ul>
+                    <li>Lighting and exposure optimization</li>
+                    <li>Color correction and saturation enhancement</li>
+                    <li>Sharpness and detail improvement</li>
+                    <li>Composition and perspective correction</li>
+                    <li>Professional staging suggestions</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>Our Technology</h2>
+                <p>Elevance AI leverages state-of-the-art artificial intelligence, including Google Gemini, to analyze and enhance your photos. Our system understands the unique requirements of property photography and applies enhancements that make spaces more inviting while maintaining authenticity.</p>
+            </section>
+
+            <section>
+                <h2>Company Information</h2>
+                <h3>Business Details</h3>
+                <p>
+                    <strong>Company Name:</strong> Elevance AI<br>
+                    <strong>Business Type:</strong> Software as a Service (SaaS)<br>
+                    <strong>Industry:</strong> Real Estate Technology / Photo Enhancement<br>
+                    <strong>Founded:</strong> 2024
+                </p>
+
+                <h3>Contact Information</h3>
+                <p>
+                    <strong>Email:</strong> contact@elevanceai.com<br>
+                    <strong>Support:</strong> support@elevanceai.com<br>
+                    <strong>Business Inquiries:</strong> business@elevanceai.com<br>
+                    <strong>Website:</strong> <a href="/contact">Contact Form</a>
+                </p>
+
+                <h3>Registered Address</h3>
+                <p>
+                    [Your Company Address]<br>
+                    [City, State, ZIP Code]<br>
+                    [Country]
+                </p>
+
+                <h3>Business Registration</h3>
+                <p>
+                    <strong>Registration Number:</strong> [Your Registration Number]<br>
+                    <strong>Tax ID / EIN:</strong> [Your Tax ID]
+                </p>
+            </section>
+
+            <section>
+                <h2>Our Values</h2>
+                <ul>
+                    <li><strong>Quality:</strong> We are committed to delivering the highest quality photo enhancements</li>
+                    <li><strong>Accessibility:</strong> Making professional photo enhancement available to everyone</li>
+                    <li><strong>Privacy:</strong> Protecting your data and photos with industry-leading security</li>
+                    <li><strong>Innovation:</strong> Continuously improving our technology and services</li>
+                    <li><strong>Customer Focus:</strong> Putting our users' needs and success first</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>Compliance and Certifications</h2>
+                <p>Elevance AI is committed to maintaining the highest standards of:</p>
+                <ul>
+                    <li>Data protection and privacy (GDPR compliant)</li>
+                    <li>Secure payment processing (PCI DSS compliant)</li>
+                    <li>Transparent business practices</li>
+                    <li>Ethical AI usage</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>Partnerships</h2>
+                <p>We work with trusted technology partners to deliver our services:</p>
+                <ul>
+                    <li>Google Gemini for AI-powered image analysis</li>
+                    <li>Secure cloud infrastructure providers</li>
+                    <li>Payment processing partners</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+
+    <footer class="home-footer">
+        <div class="container-narrow">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Elevance AI</h3>
+                    <p>AI-powered photo enhancement for real estate professionals.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul class="footer-links">
+                        <li><a href="/terms">Terms of Service</a></li>
+                        <li><a href="/privacy">Privacy Policy</a></li>
+                        <li><a href="/refund">Refund Policy</a></li>
+                        <li><a href="/cookies">Cookie Policy</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul class="footer-links">
+                        <li><a href="/about">About Us</a></li>
+                        <li><a href="/contact">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Elevance AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    {% if gtm_container_id %}
+    <script src="static/js/analytics.js"></script>
+    {% endif %}
+</body>
+</html>
+

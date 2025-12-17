@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Elevance AI</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    {% if gtm_container_id %}
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ gtm_container_id }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ gtm_container_id }}');
+        window.GTM_CONTAINER_ID = '{{ gtm_container_id }}';
+    </script>
+    {% endif %}
+</head>
+<body>
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    {% endif %}
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/" class="nav-brand-link">
+                    <h2>Elevance AI</h2>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <div class="user-info">
+                    <span class="user-name">{{ user.username }}</span>
+                    <div class="user-stats">
+                        <span class="stat-badge">{{ user.images_processed }} photos</span>
+                    </div>
+                </div>
+                <a href="/logout" class="btn btn-outline">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header class="dashboard-header">
+            <div class="welcome-section">
+                <h1>Welcome back, {{ user.username }}</h1>
+                <p class="subtitle">Upload your listing photos and let AI enhance them</p>
+            </div>
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <div class="stat-icon">—</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalProcessed">{{ user.images_processed }}</div>
+                        <div class="stat-label">Photos Enhanced</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="tips-section">
+            <div class="tip-card">
+                <h3>💡 Pro Tips</h3>
+                <ul class="tips-list">
+                    <li>Use "Moderate" settings for best results - balanced enhancement with natural look</li>
+                    <li>Upload multiple photos at once for faster batch processing</li>
+                    <li>Compare before/after to see the improvements</li>
+                    <li>Download enhanced photos in high quality for your listings</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="upload-section">
+            <div class="enhancement-settings">
+                <div class="setting-group">
+                    <label class="setting-label">Change Intensity</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="change_intensity" value="minimal">
+                            <span>Minimal</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="change_intensity" value="moderate" checked>
+                            <span>Moderate</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="change_intensity" value="extensive">
+                            <span>Extensive</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">Detail Level</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="detail_level" value="minimal">
+                            <span>Minimal</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="detail_level" value="moderate" checked>
+                            <span>Moderate</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="detail_level" value="extensive">
+                            <span>Extensive</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="upload-area" id="uploadArea">
+                <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <p class="upload-text">Drag and drop your photos here</p>
+                <p class="upload-hint">or click to browse • Supports PNG, JPG, JPEG, GIF, WEBP</p>
+                <input type="file" id="fileInput" multiple accept="image/*" hidden>
+            </div>
+        </div>
+
+        <div class="progress-section" id="progressSection" style="display: none;">
+            <h2>Processing Photos</h2>
+            <div class="progress-container" id="progressContainer"></div>
+        </div>
+
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="results-header">
+                <h2>Enhanced Photos</h2>
+                <div class="results-actions">
+                    <div class="selection-controls">
+                        <button class="btn btn-outline btn-sm" id="selectAllBtn">Select All</button>
+                        <button class="btn btn-outline btn-sm" id="deselectAllBtn">Deselect All</button>
+                        <span class="selection-count" id="selectionCount">0 selected</span>
+                    </div>
+                    <button class="download-all-btn" id="downloadAllBtn">Download Selected (0)</button>
+                </div>
+                <p style="text-align: center; color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
+                    💳 Payment required: $0.10 per photo. Secure payment via Stripe.
+                </p>
+            </div>
+            <div class="results-grid" id="resultsGrid"></div>
+        </div>
+    </div>
+
+    <div class="comparison-modal" id="comparisonModal">
+        <button class="close-modal" onclick="closeComparison()">&times;</button>
+        <div class="comparison-content" id="comparisonContent"></div>
+    </div>
+
+    <footer class="home-footer">
+        <div class="container-narrow">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Elevance AI</h3>
+                    <p>AI-powered photo enhancement for real estate professionals.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul class="footer-links">
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/pricing">Pricing</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul class="footer-links">
+                        <li><a href="/about">About Us</a></li>
+                        <li><a href="/contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul class="footer-links">
+                        <li><a href="/terms">Terms of Service</a></li>
+                        <li><a href="/privacy">Privacy Policy</a></li>
+                        <li><a href="/refund">Refund Policy</a></li>
+                        <li><a href="/cookies">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Elevance AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="static/js/app.js"></script>
+    {% if gtm_container_id %}
+    <script src="static/js/analytics.js"></script>
+    {% endif %}
+</body>
+</html>
+

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elevance AI - Photo Enhancement</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','{{ gtm_container_id }}');</script>
+    <!-- End Google Tag Manager -->
+    {% endif %}
+</head>
+<body class="home-page">
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    {% endif %}
+    <div class="hero-wrapper">
+        <nav class="navbar navbar-minimal navbar-overlay">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <a href="/" class="nav-brand-link">
+                        <h2>Elevance AI</h2>
+                    </a>
+                </div>
+                <div class="nav-menu">
+                    <a href="/features" class="nav-link">Features</a>
+                    <a href="/pricing" class="nav-link">Pricing</a>
+                    <a href="/login" class="nav-link">Sign In</a>
+                    <a href="/signup" class="btn btn-primary btn-sm">Get Started</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="home-hero hero-with-bg">
+            <div class="hero-overlay"></div>
+            <div class="hero-content hero-content-overlay">
+                <h1 class="hero-title">Enhance Your<br>Listing Photos</h1>
+                <p class="hero-subtitle">AI-powered photo enhancement for Airbnb and Booking.com listings</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-large btn-enhance" onclick="scrollToUpload()">Start Enhancing</button>
+                </div>
+                <p class="hero-note">*No credit card required | #1 AI Real Estate Photo App</p>
+            </div>
+        </main>
+    </div>
+
+    <section class="upload-section-home" id="uploadSection">
+        <div class="container-narrow">
+            <h2 class="section-title">Try It Now - Free</h2>
+                <p class="section-subtitle">Upload your photos and see the magic happen. No sign-up required to preview!</p>
+                <div class="info-banner">
+                    <p>✨ <strong>Free to try:</strong> Enhance and preview your photos without signing up. Sign up only when you're ready to download!</p>
+                </div>
+            
+            <div class="enhancement-settings">
+                <div class="setting-group">
+                    <label class="setting-label">Change Intensity</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="change_intensity" value="minimal">
+                            <span>Minimal</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="change_intensity" value="moderate" checked>
+                            <span>Moderate</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="change_intensity" value="extensive">
+                            <span>Extensive</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">Detail Level</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="detail_level" value="minimal">
+                            <span>Minimal</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="detail_level" value="moderate" checked>
+                            <span>Moderate</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="detail_level" value="extensive">
+                            <span>Extensive</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="upload-area" id="uploadArea">
+                <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <p class="upload-text">Drag and drop your photos here</p>
+                <p class="upload-hint">or click to browse • Supports PNG, JPG, JPEG, GIF, WEBP</p>
+                <input type="file" id="fileInput" multiple accept="image/*" hidden>
+            </div>
+
+            <div class="progress-section" id="progressSection" style="display: none;">
+                <h3>Processing Photos</h3>
+                <div class="progress-container" id="progressContainer"></div>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h3>Enhanced Photos</h3>
+                    <div id="resultsNote" class="results-note"></div>
+                </div>
+                <div class="results-grid" id="resultsGrid"></div>
+                <div class="signup-prompt" id="signupPrompt" style="display: none;">
+                    <div class="signup-prompt-content">
+                        <h3>✨ Sign up to Download All Photos</h3>
+                        <p>Create a free account to download all your enhanced photos</p>
+                        <div class="signup-prompt-actions">
+                            <a href="/signup?return_url=/" class="btn btn-primary" onclick="saveEnhancedImages(); return true;">Sign Up Free</a>
+                            <a href="/login?return_url=/" class="btn btn-outline" onclick="saveEnhancedImages(); return true;">Sign In</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="stats-section">
+        <div class="container-narrow">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">32%</div>
+                    <div class="stat-label">Faster Bookings</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">25%</div>
+                    <div class="stat-label">Higher Rates</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">40%</div>
+                    <div class="stat-label">Boost Rental Value</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-section">
+        <div class="container-narrow">
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Instant Enhancement</h3>
+                    <p>Transform your photos in seconds with our lightning-fast AI technology</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💡</div>
+                    <h3>Perfect Lighting</h3>
+                    <p>Automatically adjust lighting to highlight the best features of any space</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">✨</div>
+                    <h3>Professional Quality</h3>
+                    <p>Achieve professional-grade photography results without expensive equipment</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Smart Corrections</h3>
+                    <p>Fix distortion, straighten horizons, and correct perspective automatically</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📦</div>
+                    <h3>Batch Processing</h3>
+                    <p>Enhance multiple property photos at once to save time and effort</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⏱️</div>
+                    <h3>Time-Saving</h3>
+                    <p>Reduce post-processing time from hours to minutes with automated enhancements</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="how-it-works-section" id="howItWorks">
+        <div class="container-narrow">
+            <h2 class="section-title">How It Works</h2>
+            <div class="steps-grid">
+                <div class="step-item">
+                    <div class="step-number">1</div>
+                    <h3>Upload Photos</h3>
+                    <p>Upload your property photos using our simple drag-and-drop interface</p>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">2</div>
+                    <h3>AI Enhancement</h3>
+                    <p>Our AI analyzes and enhances your photos automatically in seconds</p>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">3</div>
+                    <h3>Download Results</h3>
+                    <p>Download your professionally enhanced photos ready for your listings</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="faq-section" id="faqSection">
+        <div class="container-narrow">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3 class="faq-question">How does the photo enhancement process work?</h3>
+                    <p class="faq-answer">Our AI analyzes your photos and automatically applies professional enhancements including lighting adjustments, color correction, sharpness improvements, and composition fixes.</p>
+                </div>
+                <div class="faq-item">
+                    <h3 class="faq-question">Will the enhanced photos look fake or over-edited?</h3>
+                    <p class="faq-answer">No, our AI is trained to enhance photos naturally while maintaining authenticity. The results look professional but realistic.</p>
+                </div>
+                <div class="faq-item">
+                    <h3 class="faq-question">How long does it take to enhance my photos?</h3>
+                    <p class="faq-answer">Most photos are enhanced in just a few seconds. Batch processing multiple photos typically takes less than a minute.</p>
+                </div>
+                <div class="faq-item">
+                    <h3 class="faq-question">Can I use the enhanced photos on platforms other than Airbnb?</h3>
+                    <p class="faq-answer">Yes, you can use the enhanced photos on any platform including Booking.com, VRBO, and other rental listing sites.</p>
+                </div>
+                <div class="faq-item">
+                    <h3 class="faq-question">Is there a limit to how many photos I can enhance?</h3>
+                    <p class="faq-answer">No limits on the number of photos you can enhance. Process as many as you need for your listings.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container-narrow">
+            <h2 class="cta-title">Ready to Enhance Your Real Estate Photos?</h2>
+            <p class="cta-subtitle">Join thousands of real estate professionals who are saving time and closing deals faster with our AI-powered photo enhancement.</p>
+            <div class="cta-actions">
+                <a href="/signup" class="btn btn-primary btn-large">Start Enhancing</a>
+                <a href="/pricing" class="btn btn-outline btn-large">See Pricing</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="home-footer">
+        <div class="container-narrow">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Elevance AI</h3>
+                    <p>AI-powered photo enhancement for real estate professionals. Transform your property photos instantly.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul class="footer-links">
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/pricing">Pricing</a></li>
+                        <li><a href="/#uploadSection">Try It Free</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul class="footer-links">
+                        <li><a href="/about">About Us</a></li>
+                        <li><a href="/contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul class="footer-links">
+                        <li><a href="/terms">Terms of Service</a></li>
+                        <li><a href="/privacy">Privacy Policy</a></li>
+                        <li><a href="/refund">Refund Policy</a></li>
+                        <li><a href="/cookies">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Elevance AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <div class="comparison-modal" id="comparisonModal">
+        <button class="close-modal" onclick="closeComparison()">&times;</button>
+        <div class="comparison-content" id="comparisonContent"></div>
+    </div>
+
+    <script src="static/js/home.js"></script>
+    {% if gtm_container_id %}
+    <script src="static/js/analytics.js"></script>
+    {% endif %}
+</body>
+</html>
