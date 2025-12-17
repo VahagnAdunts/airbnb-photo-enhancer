@@ -16,6 +16,12 @@ from dotenv import load_dotenv
 from image_enhancer import ImageEnhancer
 from models import db, User, EnhancedImage, Payment
 import stripe
+# Ensure Stripe checkout module is available
+try:
+    from stripe import checkout
+    _stripe_checkout_available = True
+except ImportError:
+    _stripe_checkout_available = False
 
 # Load environment variables from .env file
 load_dotenv()
@@ -748,23 +754,29 @@ def create_checkout_session():
         # Create Stripe Checkout Session
         try:
             # Verify Stripe checkout is available before using it
-            if not hasattr(stripe, 'checkout'):
-                logger.error("Stripe module missing 'checkout' attribute")
-                return jsonify({'error': 'Payment system error. Please contact support.'}), 500
+            # Try multiple ways to access checkout
+            checkout_module = None
+            if hasattr(stripe, 'checkout') and stripe.checkout is not None:
+                checkout_module = stripe.checkout
+            elif _stripe_checkout_available:
+                checkout_module = checkout
             
-            if stripe.checkout is None:
-                logger.error("stripe.checkout is None - Stripe not properly initialized")
-                # Try to reinitialize
+            if checkout_module is None:
+                logger.error("Stripe checkout module not available - trying to reinitialize")
+                # Force reinitialize
                 stripe.api_key = stripe_secret
-                if stripe.checkout is None:
-                    logger.error("stripe.checkout still None after reinit")
+                # Try again
+                if hasattr(stripe, 'checkout') and stripe.checkout is not None:
+                    checkout_module = stripe.checkout
+                else:
+                    logger.error("Stripe checkout still not available after reinit")
                     return jsonify({'error': 'Payment system error. Please contact support.'}), 500
             
-            if not hasattr(stripe.checkout, 'Session'):
-                logger.error("stripe.checkout.Session not available")
+            if not hasattr(checkout_module, 'Session'):
+                logger.error("Stripe checkout.Session not available")
                 return jsonify({'error': 'Payment system error. Please contact support.'}), 500
             
-            checkout_session = stripe.checkout.Session.create(
+            checkout_session = checkout_module.Session.create(
                 payment_method_types=['card'],
                 line_items=[{
                     'price_data': {
