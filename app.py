@@ -47,11 +47,14 @@ app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY', '')
 app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 
 # Initialize Stripe
-if app.config['STRIPE_SECRET_KEY']:
-    stripe.api_key = app.config['STRIPE_SECRET_KEY']
-    logger.info("Stripe initialized successfully")
+stripe_secret_key = os.getenv('STRIPE_SECRET_KEY', '')
+if stripe_secret_key:
+    stripe.api_key = stripe_secret_key
+    app.config['STRIPE_SECRET_KEY'] = stripe_secret_key
+    logger.info(f"Stripe initialized successfully (key starts with: {stripe_secret_key[:7]}...)")
 else:
     logger.warning("STRIPE_SECRET_KEY not set - payment features will not work")
+    app.config['STRIPE_SECRET_KEY'] = ''
 
 # Price per photo in cents ($0.10 = 10 cents)
 PHOTO_PRICE_CENTS = 10
@@ -684,12 +687,19 @@ def delete_photo(photo_id):
 def create_checkout_session():
     """Create a Stripe Checkout Session for photo downloads"""
     # Check if Stripe is configured BEFORE trying to use it
-    if not app.config['STRIPE_SECRET_KEY']:
-        logger.error("Stripe not configured - STRIPE_SECRET_KEY missing")
+    stripe_secret = os.getenv('STRIPE_SECRET_KEY', '') or app.config.get('STRIPE_SECRET_KEY', '')
+    
+    if not stripe_secret:
+        logger.error("Stripe not configured - STRIPE_SECRET_KEY missing from environment")
         return jsonify({'error': 'Payment system not configured. Please set STRIPE_SECRET_KEY environment variable.'}), 500
     
     if not stripe.api_key:
-        logger.error("Stripe API key not initialized")
+        # Try to reinitialize if not set
+        stripe.api_key = stripe_secret
+        logger.info("Reinitializing Stripe API key")
+    
+    if not stripe.api_key:
+        logger.error("Stripe API key still not initialized after reinit attempt")
         return jsonify({'error': 'Payment system not configured. Please set STRIPE_SECRET_KEY environment variable.'}), 500
     
     try:
