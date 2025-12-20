@@ -688,6 +688,19 @@ def enhance_image():
         # Get enhanced filename from path
         enhanced_filename = os.path.basename(enhanced_path)
         
+        # Read images as base64 for database storage (persists across deployments)
+        original_image_data = None
+        enhanced_image_data = None
+        try:
+            with open(original_path, 'rb') as f:
+                original_image_data = base64.b64encode(f.read()).decode('utf-8')
+            with open(enhanced_path, 'rb') as f:
+                enhanced_image_data = base64.b64encode(f.read()).decode('utf-8')
+            logger.info("Images encoded as base64 for database storage")
+        except Exception as encode_error:
+            logger.error(f"Error encoding images for database storage: {encode_error}")
+            # Continue without base64 storage - files will still work if they exist
+        
         # Save photo records to database with transaction
         try:
             # Check if user is authenticated
@@ -702,6 +715,8 @@ def enhance_image():
                 enhanced_filename=enhanced_filename,
                 enhanced_path=enhanced_path,
                 enhanced_file_size=enhanced_file_size,
+                original_image_data=original_image_data,
+                enhanced_image_data=enhanced_image_data,
                 change_intensity=change_intensity,
                 detail_level=detail_level,
                 enhancement_settings=json.dumps(enhancements) if enhancements else None,
@@ -796,11 +811,19 @@ def get_user_photos():
             error_out=False
         )
         
-        photos = [photo.to_dict() for photo in pagination.items]
+        # Filter out photos where files don't exist and no database backup
+        valid_photos = []
+        for photo in pagination.items:
+            # Check if photo is accessible (file exists OR database has backup)
+            file_exists = os.path.exists(photo.enhanced_path) or photo.enhanced_image_data is not None
+            if file_exists:
+                valid_photos.append(photo.to_dict())
+            else:
+                logger.warning(f"Photo {photo.id} has no file and no database backup - skipping")
         
         return jsonify({
             'success': True,
-            'photos': photos,
+            'photos': valid_photos,
             'pagination': {
                 'page': page,
                 'per_page': per_page,
@@ -844,11 +867,19 @@ def serve_original_photo(photo_id):
         if photo.user_id != current_user.id:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Check if file exists
-        if not os.path.exists(photo.original_path):
-            return jsonify({'error': 'Original image not found'}), 404
+        # Try to serve from file first (if it exists)
+        if os.path.exists(photo.original_path):
+            return send_file(photo.original_path, mimetype='image/jpeg')
         
-        return send_file(photo.original_path, mimetype='image/jpeg')
+        # If file doesn't exist, serve from database (base64)
+        if photo.original_image_data:
+            logger.info(f"Serving original image {photo_id} from database (file not found)")
+            image_bytes = base64.b64decode(photo.original_image_data)
+            return send_file(BytesIO(image_bytes), mimetype='image/jpeg', download_name=photo.original_filename)
+        
+        # Neither file nor database data available
+        logger.warning(f"Original image {photo_id} not found in file system or database")
+        return jsonify({'error': 'Original image not found'}), 404
     except Exception as e:
         logger.error(f"Error serving original photo: {e}", exc_info=True)
         return jsonify({'error': 'Failed to serve photo'}), 500
@@ -864,11 +895,19 @@ def serve_enhanced_photo(photo_id):
         if photo.user_id != current_user.id:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Check if file exists
-        if not os.path.exists(photo.enhanced_path):
-            return jsonify({'error': 'Enhanced image not found'}), 404
+        # Try to serve from file first (if it exists)
+        if os.path.exists(photo.enhanced_path):
+            return send_file(photo.enhanced_path, mimetype='image/jpeg')
         
-        return send_file(photo.enhanced_path, mimetype='image/jpeg')
+        # If file doesn't exist, serve from database (base64)
+        if photo.enhanced_image_data:
+            logger.info(f"Serving enhanced image {photo_id} from database (file not found)")
+            image_bytes = base64.b64decode(photo.enhanced_image_data)
+            return send_file(BytesIO(image_bytes), mimetype='image/jpeg', download_name=photo.enhanced_filename)
+        
+        # Neither file nor database data available
+        logger.warning(f"Enhanced image {photo_id} not found in file system or database")
+        return jsonify({'error': 'Enhanced image not found'}), 404
     except Exception as e:
         logger.error(f"Error serving enhanced photo: {e}", exc_info=True)
         return jsonify({'error': 'Failed to serve photo'}), 500
