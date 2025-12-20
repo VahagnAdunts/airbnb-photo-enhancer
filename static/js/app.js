@@ -473,7 +473,7 @@ function updateSelectionUI() {
 function updateDownloadButton() {
     if (downloadAllBtn) {
         const selectedCount = enhancedImages.filter(img => img.selected).length;
-        const totalPrice = (selectedCount * 0.10).toFixed(2);
+        const totalPrice = (selectedCount * 0.55).toFixed(2);
         
         if (selectedCount === 0) {
             downloadAllBtn.textContent = 'Download Selected (0)';

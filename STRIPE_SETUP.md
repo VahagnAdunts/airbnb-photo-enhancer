@@ -2,7 +2,7 @@
 
 ## Overview
 
-Your application now requires payment ($0.10 per photo) before users can download enhanced photos. The payment is processed through Stripe Checkout.
+Your application now requires payment ($0.55 per photo) before users can download enhanced photos. The payment is processed through Stripe Checkout.
 
 ## Setup Instructions
 
@@ -98,7 +98,7 @@ Or restart your Flask app - it will create the table automatically.
 
 ## Pricing
 
-- **Price per photo**: $0.10 (10 cents)
+- **Price per photo**: $0.55 (55 cents)
 - **Minimum**: 1 photo
 - **Currency**: USD
 
