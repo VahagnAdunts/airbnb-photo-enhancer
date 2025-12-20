@@ -38,8 +38,9 @@ class EnhancedImage(db.Model):
     enhanced_file_size = db.Column(db.Integer)  # in bytes
     
     # Store images as base64 in database for persistence across deployments
-    original_image_data = db.Column(db.Text)  # Base64 encoded original image
-    enhanced_image_data = db.Column(db.Text)  # Base64 encoded enhanced image
+    # These columns are nullable to support existing databases
+    original_image_data = db.Column(db.Text, nullable=True)  # Base64 encoded original image
+    enhanced_image_data = db.Column(db.Text, nullable=True)  # Base64 encoded enhanced image
     
     # Enhancement settings and metadata
     change_intensity = db.Column(db.String(20), default='moderate')  # minimal, moderate, extensive

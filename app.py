@@ -255,6 +255,32 @@ with app.app_context():
         db.create_all()
         logger.info("Database tables created successfully")
         
+        # Add new columns to existing tables if they don't exist (for migrations)
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            
+            # Check if enhanced_image table exists
+            if 'enhanced_image' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('enhanced_image')]
+                
+                if 'original_image_data' not in columns:
+                    logger.info("Adding original_image_data column to enhanced_image table...")
+                    with db.engine.connect() as conn:
+                        conn.execute(text('ALTER TABLE enhanced_image ADD COLUMN original_image_data TEXT'))
+                        conn.commit()
+                    logger.info("Added original_image_data column")
+                
+                if 'enhanced_image_data' not in columns:
+                    logger.info("Adding enhanced_image_data column to enhanced_image table...")
+                    with db.engine.connect() as conn:
+                        conn.execute(text('ALTER TABLE enhanced_image ADD COLUMN enhanced_image_data TEXT'))
+                        conn.commit()
+                    logger.info("Added enhanced_image_data column")
+        except Exception as migration_error:
+            # Columns might already exist or table might not exist yet - that's okay
+            logger.warning(f"Migration check: {migration_error} (columns may already exist or table not created yet)")
+        
         # Verify tables exist by trying to query
         try:
             user_count = User.query.count()
