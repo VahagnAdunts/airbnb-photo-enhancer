@@ -39,7 +39,16 @@ function updateDownloadSection(isAuthenticated) {
         // Add message
         const message = document.createElement('p');
         message.style.marginBottom = '1rem';
-        message.textContent = `You've enhanced ${enhancedImages.length} photo${enhancedImages.length > 1 ? 's' : ''}. Ready to download!`;
+        
+        // Check if images have IDs (saved photos require payment)
+        const hasSavedPhotos = enhancedImages.some(img => img.id !== undefined && img.id !== null);
+        if (hasSavedPhotos) {
+            const totalPrice = (enhancedImages.length * 0.55).toFixed(2);
+            message.textContent = `You've enhanced ${enhancedImages.length} photo${enhancedImages.length > 1 ? 's' : ''}. Payment required: $${totalPrice}`;
+        } else {
+            message.textContent = `You've enhanced ${enhancedImages.length} photo${enhancedImages.length > 1 ? 's' : ''}. Ready to download!`;
+        }
+        
         resultsNote.appendChild(message);
         
         // Create download button container
