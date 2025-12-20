@@ -49,7 +49,16 @@ function updateDownloadSection(isAuthenticated) {
         // Create download button
         const downloadBtn = document.createElement('button');
         downloadBtn.className = 'btn btn-primary btn-large';
-        downloadBtn.textContent = `Download All ${enhancedImages.length} Photo${enhancedImages.length > 1 ? 's' : ''}`;
+        
+        // Check if images have IDs (saved photos require payment)
+        const hasSavedPhotos = enhancedImages.some(img => img.id !== undefined && img.id !== null);
+        if (hasSavedPhotos) {
+            const totalPrice = (enhancedImages.length * 0.55).toFixed(2);
+            downloadBtn.textContent = `Download All ${enhancedImages.length} Photo${enhancedImages.length > 1 ? 's' : ''} - $${totalPrice}`;
+        } else {
+            downloadBtn.textContent = `Download All ${enhancedImages.length} Photo${enhancedImages.length > 1 ? 's' : ''}`;
+        }
+        
         downloadBtn.onclick = downloadAllImages;
         downloadBtn.style.display = 'inline-block';
         downloadBtn.style.margin = '0 auto';
