@@ -102,6 +102,9 @@
                         });
                 }
                 
+                // Track download promises to ensure they complete
+                let downloadPromises = [];
+                
                 // Download all photos with slight delay between each
                 let downloadIndex = 0;
                 function downloadNext() {
@@ -110,22 +113,61 @@
                         const filename = photo.originalName.endsWith('.jpg') 
                             ? photo.originalName 
                             : photo.originalName + '.jpg';
-                        downloadImage(photo.enhancedUrl, filename);
+                        
+                        // Create a promise for this download
+                        const downloadPromise = new Promise(function(resolve, reject) {
+                            fetch(photo.enhancedUrl)
+                                .then(function(response) {
+                                    return response.blob();
+                                })
+                                .then(function(blob) {
+                                    const blobUrl = window.URL.createObjectURL(blob);
+                                    const link = document.createElement('a');
+                                    link.href = blobUrl;
+                                    link.download = filename;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    window.URL.revokeObjectURL(blobUrl);
+                                    console.log('Downloaded:', filename);
+                                    resolve();
+                                })
+                                .catch(function(error) {
+                                    console.error('Error downloading image:', error);
+                                    // Fallback: open in new tab
+                                    window.open(photo.enhancedUrl, '_blank');
+                                    resolve(); // Continue even if one fails
+                                });
+                        });
+                        
+                        downloadPromises.push(downloadPromise);
                         downloadIndex++;
-                        setTimeout(downloadNext, 300); // 300ms delay between downloads
+                        
+                        // Wait a bit before next download to avoid browser blocking
+                        setTimeout(downloadNext, 500);
                     } else {
-                        // All downloads complete, redirect to dashboard after a short delay
-                        console.log('All downloads complete, redirecting to dashboard...');
-                        setTimeout(function() {
-                            window.location.href = '/dashboard';
-                        }, 500);
+                        // All downloads initiated, wait for them to complete
+                        console.log('All downloads initiated, waiting for completion...');
+                        Promise.all(downloadPromises).then(function() {
+                            console.log('All downloads complete, redirecting to dashboard...');
+                            // Redirect to dashboard after all downloads complete
+                            setTimeout(function() {
+                                window.location.href = '/dashboard';
+                            }, 1000);
+                        }).catch(function(error) {
+                            console.error('Some downloads failed:', error);
+                            // Still redirect even if some failed
+                            setTimeout(function() {
+                                window.location.href = '/dashboard';
+                            }, 2000);
+                        });
                     }
                 }
                 
                 // Start downloading after a brief delay to let page render
                 setTimeout(function() {
                     downloadNext();
-                }, 1000);
+                }, 1500);
             } else {
                 // No photos to download, just redirect to dashboard after a short delay
                 setTimeout(function() {

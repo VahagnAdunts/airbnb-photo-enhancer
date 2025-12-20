@@ -188,6 +188,9 @@
         </div>
     </footer>
 
+    {% if payment_data %}
+    <script id="payment-data" type="application/json">{{ payment_data|safe }}</script>
+    {% endif %}
     <script src="static/js/app.js"></script>
     {% if gtm_container_id %}
     <script src="static/js/analytics.js"></script>
