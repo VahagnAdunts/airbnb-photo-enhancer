@@ -758,13 +758,47 @@ def enhance_image():
             }), 500
         
         # Convert to base64 for response
-        with open(original_path, 'rb') as f:
-            original_data = base64.b64encode(f.read()).decode('utf-8')
-            original_url = f"data:image/{filename.rsplit('.', 1)[1]};base64,{original_data}"
+        # Try to read from file first, fallback to database if file doesn't exist
+        original_url = None
+        enhanced_url = None
         
-        with open(enhanced_path, 'rb') as f:
-            enhanced_data = base64.b64encode(f.read()).decode('utf-8')
-            enhanced_url = f"data:image/jpeg;base64,{enhanced_data}"
+        try:
+            if os.path.exists(original_path):
+                with open(original_path, 'rb') as f:
+                    original_data = base64.b64encode(f.read()).decode('utf-8')
+                    original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{original_data}"
+            elif enhanced_image_record.original_image_data:
+                # Use database-stored image
+                original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{enhanced_image_record.original_image_data}"
+                logger.info("Using database-stored original image for response")
+        except Exception as e:
+            logger.error(f"Error reading original image for response: {e}")
+            # Try database fallback
+            if enhanced_image_record.original_image_data:
+                original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{enhanced_image_record.original_image_data}"
+        
+        try:
+            if os.path.exists(enhanced_path):
+                with open(enhanced_path, 'rb') as f:
+                    enhanced_data = base64.b64encode(f.read()).decode('utf-8')
+                    enhanced_url = f"data:image/jpeg;base64,{enhanced_data}"
+            elif enhanced_image_record.enhanced_image_data:
+                # Use database-stored image
+                enhanced_url = f"data:image/jpeg;base64,{enhanced_image_record.enhanced_image_data}"
+                logger.info("Using database-stored enhanced image for response")
+        except Exception as e:
+            logger.error(f"Error reading enhanced image for response: {e}")
+            # Try database fallback
+            if enhanced_image_record.enhanced_image_data:
+                enhanced_url = f"data:image/jpeg;base64,{enhanced_image_record.enhanced_image_data}"
+        
+        # If we still don't have URLs, something went wrong
+        if not original_url or not enhanced_url:
+            logger.error(f"Failed to generate image URLs. Original: {bool(original_url)}, Enhanced: {bool(enhanced_url)}")
+            return jsonify({
+                'error': 'Failed to process images. Please try again.',
+                'details': 'Image files could not be read or encoded.'
+            }), 500
         
         return jsonify({
             'success': True,
