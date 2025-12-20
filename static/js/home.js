@@ -59,8 +59,7 @@ function updateDownloadSection(isAuthenticated) {
         const downloadBtn = document.createElement('button');
         downloadBtn.className = 'btn btn-primary btn-large';
         
-        // Check if images have IDs (saved photos require payment)
-        const hasSavedPhotos = enhancedImages.some(img => img.id !== undefined && img.id !== null);
+        // Use the same hasSavedPhotos variable (already checked above)
         if (hasSavedPhotos) {
             const totalPrice = (enhancedImages.length * 0.55).toFixed(2);
             downloadBtn.textContent = `Download All ${enhancedImages.length} Photo${enhancedImages.length > 1 ? 's' : ''} - $${totalPrice}`;
