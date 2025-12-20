@@ -71,7 +71,16 @@ except Exception as e:
 
 app = Flask(__name__, static_folder='static', template_folder='.')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///airbnb_enhancer.db')
+
+# Database configuration - supports both PostgreSQL and SQLite
+# Render provides DATABASE_URL with postgres:// but SQLAlchemy needs postgresql://
+database_url = os.getenv('DATABASE_URL', 'sqlite:///airbnb_enhancer.db')
+# Convert postgres:// to postgresql:// for SQLAlchemy compatibility
+if database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    logger.info("Converted postgres:// to postgresql:// for SQLAlchemy compatibility")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Google Tag Manager Configuration
@@ -192,9 +201,34 @@ def validate_username(username):
     pattern = r'^[a-zA-Z0-9_-]{3,30}$'
     return bool(re.match(pattern, username))
 
-# Create database tables
+# Create database tables with error handling
 with app.app_context():
-    db.create_all()
+    try:
+        # Log database configuration
+        db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+        # Don't log the full URI (may contain password), just the type
+        if db_uri.startswith('sqlite'):
+            logger.info("Using SQLite database")
+        elif db_uri.startswith('postgresql'):
+            logger.info("Using PostgreSQL database")
+        else:
+            logger.info(f"Using database: {db_uri.split('://')[0] if '://' in db_uri else 'unknown'}")
+        
+        # Create all tables
+        db.create_all()
+        logger.info("Database tables created successfully")
+        
+        # Verify tables exist by trying to query
+        try:
+            user_count = User.query.count()
+            image_count = EnhancedImage.query.count()
+            logger.info(f"Database initialized: {user_count} users, {image_count} images")
+        except Exception as verify_error:
+            logger.warning(f"Database tables created but verification query failed: {verify_error}")
+    except Exception as db_init_error:
+        logger.error(f"CRITICAL: Failed to initialize database: {db_init_error}", exc_info=True)
+        logger.error("The application may not work correctly without a database!")
+        # Don't raise - let the app start so we can see the error in logs
 
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
@@ -438,6 +472,39 @@ def check_auth():
     """Check if user is authenticated"""
     return jsonify({'authenticated': current_user.is_authenticated})
 
+@app.route('/api/health')
+def health_check():
+    """Health check endpoint to verify database connectivity"""
+    try:
+        # Test database connection
+        db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+        db_type = 'SQLite' if db_uri.startswith('sqlite') else 'PostgreSQL' if db_uri.startswith('postgresql') else 'Unknown'
+        
+        # Try to query the database
+        user_count = User.query.count()
+        image_count = EnhancedImage.query.count()
+        
+        return jsonify({
+            'status': 'healthy',
+            'database': {
+                'type': db_type,
+                'connected': True,
+                'users': user_count,
+                'images': image_count
+            },
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        logger.error(f"Health check failed: {e}", exc_info=True)
+        return jsonify({
+            'status': 'unhealthy',
+            'database': {
+                'connected': False,
+                'error': str(e)
+            },
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
 @app.route('/pricing')
 def pricing():
     return render_template('pricing.html')
@@ -524,8 +591,12 @@ def enhance_image():
         
         # Save photo records to database with transaction
         try:
+            # Check if user is authenticated
+            user_id = current_user.id if current_user.is_authenticated else None
+            logger.info(f"Saving enhanced image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}")
+            
             enhanced_image_record = EnhancedImage(
-                user_id=current_user.id if current_user.is_authenticated else None,
+                user_id=user_id,
                 original_filename=filename,
                 original_path=original_path,
                 original_file_size=original_file_size,
@@ -543,18 +614,34 @@ def enhance_image():
             # Update user's processed images count if logged in
             if current_user.is_authenticated:
                 current_user.images_processed += 1
+                logger.info(f"Updating user {user_id} processed images count to {current_user.images_processed}")
             
             db.session.commit()
-            logger.info(f"Image enhanced successfully: {filename} (ID: {enhanced_image_record.id})")
+            logger.info(f"Image enhanced and saved successfully: {filename} (ID: {enhanced_image_record.id}, User ID: {user_id})")
         except Exception as db_error:
             db.session.rollback()
             logger.error(f"Database error during image save: {db_error}", exc_info=True)
+            logger.error(f"Database URI: {app.config['SQLALCHEMY_DATABASE_URI'][:50]}...")  # Log partial URI
+            logger.error(f"User authenticated: {current_user.is_authenticated}")
+            if current_user.is_authenticated:
+                logger.error(f"User ID: {current_user.id}")
+            
             # Clean up files if database save failed
             if os.path.exists(original_path):
-                os.remove(original_path)
+                try:
+                    os.remove(original_path)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup original file: {cleanup_error}")
             if os.path.exists(enhanced_path):
-                os.remove(enhanced_path)
-            return jsonify({'error': 'Failed to save image record. Please try again.'}), 500
+                try:
+                    os.remove(enhanced_path)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup enhanced file: {cleanup_error}")
+            
+            return jsonify({
+                'error': 'Failed to save image record to database. Please check server logs.',
+                'details': 'Database connection or table creation may have failed.'
+            }), 500
         
         # Convert to base64 for response
         with open(original_path, 'rb') as f:
