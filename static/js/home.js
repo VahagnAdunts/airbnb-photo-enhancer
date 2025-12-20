@@ -256,6 +256,9 @@ async function checkAuthStatus() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // Setup upload handlers
+    setupUploadHandlers();
+    
     loadEnhancedImages();
     
     // Check auth status on page load to update navbar
@@ -263,6 +266,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check again after a short delay (to catch redirects after login)
     setTimeout(() => {
+        // Re-initialize upload handlers in case DOM changed
+        setupUploadHandlers();
+        
         if (enhancedImages.length > 0) {
             checkAuthStatus();
         }
@@ -270,13 +276,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check auth status when page becomes visible (user returns after login)
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && enhancedImages.length > 0) {
-            setTimeout(() => checkAuthStatus(), 100);
+        if (!document.hidden) {
+            // Re-initialize upload handlers when page becomes visible
+            setupUploadHandlers();
+            
+            if (enhancedImages.length > 0) {
+                setTimeout(() => checkAuthStatus(), 100);
+            }
         }
     });
     
     // Also check on window focus (when user returns to tab)
     window.addEventListener('focus', () => {
+        // Re-initialize upload handlers on focus
+        setupUploadHandlers();
+        
         if (enhancedImages.length > 0) {
             setTimeout(() => checkAuthStatus(), 100);
         }
@@ -292,35 +306,65 @@ function scrollToUpload() {
 }
 
 // Initialize upload handlers
-if (uploadArea && fileInput) {
+function setupUploadHandlers() {
+    const uploadAreaEl = document.getElementById('uploadArea');
+    const fileInputEl = document.getElementById('fileInput');
+    
+    if (!uploadAreaEl || !fileInputEl) {
+        console.warn('Upload elements not found, will retry...');
+        return;
+    }
+    
+    // Remove existing listeners to avoid duplicates
+    const newUploadArea = uploadAreaEl.cloneNode(true);
+    uploadAreaEl.parentNode.replaceChild(newUploadArea, uploadAreaEl);
+    
+    const newFileInput = fileInputEl.cloneNode(true);
+    fileInputEl.parentNode.replaceChild(newFileInput, fileInputEl);
+    
     // Upload area click handler
-    uploadArea.addEventListener('click', () => fileInput.click());
+    newUploadArea.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        newFileInput.click();
+    });
 
     // File input change handler
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
+    newFileInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files.length > 0) {
             handleFiles(Array.from(e.target.files));
         }
     });
 
     // Drag and drop handlers
-    uploadArea.addEventListener('dragover', (e) => {
+    newUploadArea.addEventListener('dragover', function(e) {
         e.preventDefault();
-        uploadArea.classList.add('dragover');
+        e.stopPropagation();
+        newUploadArea.classList.add('dragover');
     });
 
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('dragover');
+    newUploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        newUploadArea.classList.remove('dragover');
     });
 
-    uploadArea.addEventListener('drop', (e) => {
+    newUploadArea.addEventListener('drop', function(e) {
         e.preventDefault();
-        uploadArea.classList.remove('dragover');
+        e.stopPropagation();
+        newUploadArea.classList.remove('dragover');
         const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
         if (files.length > 0) {
             handleFiles(files);
         }
     });
+    
+    console.log('Upload handlers initialized successfully');
+}
+
+// Initialize upload handlers on page load
+if (uploadArea && fileInput) {
+    setupUploadHandlers();
 }
 
 async function handleFiles(files) {
