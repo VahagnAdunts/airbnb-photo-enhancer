@@ -17,8 +17,8 @@ let enhancedImages = [];
 document.addEventListener('DOMContentLoaded', function() {
     loadUserStats();
     
-    // Check if we need to auto-download after payment
-    checkAndAutoDownload();
+    // Note: Auto-download after payment is handled on payment_success.html page
+    // Dashboard doesn't need to trigger downloads to avoid duplicates
     
     if (uploadArea && fileInput) {
         setupUploadHandlers();

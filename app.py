@@ -609,39 +609,10 @@ def features():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # Check if user just completed a payment
-    payment_session_id = session.pop('payment_success_session_id', None)
-    payment_data = None
+    # Clear payment session flag if it exists (downloads already handled on payment success page)
+    session.pop('payment_success_session_id', None)
     
-    if payment_session_id:
-        # Get payment details for auto-download
-        payment = Payment.query.filter_by(
-            stripe_session_id=payment_session_id,
-            user_id=current_user.id,
-            status='completed'
-        ).first()
-        
-        if payment and payment.photo_ids:
-            try:
-                photo_ids = json.loads(payment.photo_ids)
-                photos = EnhancedImage.query.filter(
-                    EnhancedImage.id.in_(photo_ids),
-                    EnhancedImage.user_id == current_user.id
-                ).all()
-                
-                payment_data = {
-                    'photo_ids': photo_ids,
-                    'photos': [{
-                        'id': photo.id,
-                        'enhanced_filename': photo.enhanced_filename
-                    } for photo in photos]
-                }
-            except Exception as e:
-                logger.error(f"Error processing payment data for dashboard: {e}")
-    
-    return render_template('dashboard.html', 
-                         user=current_user,
-                         payment_data=json.dumps(payment_data) if payment_data else None)
+    return render_template('dashboard.html', user=current_user)
 
 # Legal and Information Pages
 @app.route('/terms')
