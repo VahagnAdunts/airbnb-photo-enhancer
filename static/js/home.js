@@ -359,7 +359,9 @@ async function handleFiles(files) {
             progressItem.element.classList.add('completed');
 
             // Add to results
+            // Include image_id if present (means it's saved to database and requires payment)
             enhancedImages.push({
+                id: result.image_id || result.photo_id || undefined, // Include ID if present
                 originalName: file.name,
                 enhancedUrl: result.enhanced_image_url,
                 originalUrl: result.original_image_url,
@@ -461,8 +463,45 @@ function displayResults() {
 }
 
 async function downloadAllImages() {
-    // For home page, photos are free (preview mode)
-    // Payment is only required for authenticated users downloading saved photos
+    // Check if payment is required
+    // Photos with IDs (saved to database) require payment for authenticated users
+    // Photos without IDs (preview mode) are free
+    const photoIds = enhancedImages.map(img => img.id).filter(id => id !== undefined && id !== null);
+    
+    if (photoIds.length > 0) {
+        // These are saved photos - payment is required for authenticated users
+        // Check if user is authenticated
+        let isAuthenticated = false;
+        try {
+            const authResponse = await fetch('/api/check-auth');
+            if (authResponse.ok) {
+                const authData = await authResponse.json();
+                isAuthenticated = authData.authenticated || false;
+            }
+        } catch (error) {
+            console.error('Error checking auth status:', error);
+        }
+        
+        if (isAuthenticated) {
+            // User is authenticated and photos are saved - payment required
+            // Check if payment has already been completed
+            const paymentCompleted = await checkPaymentStatus(photoIds);
+            
+            if (!paymentCompleted) {
+                // Payment required but not completed - redirect to payment
+                await initiatePayment(photoIds);
+                return;
+            }
+            // If payment is completed, continue to download below
+        } else {
+            // User not authenticated but photos have IDs - shouldn't happen, but handle gracefully
+            // Redirect to login
+            window.location.href = '/login?return_url=/';
+            return;
+        }
+    }
+    
+    // Payment completed or not required (preview photos) - proceed with download
     enhancedImages.forEach((image, index) => {
         setTimeout(() => {
             downloadImage(image.enhancedUrl, image.originalName);
@@ -472,6 +511,61 @@ async function downloadAllImages() {
     // Clear saved images after successful download
     localStorage.removeItem('pendingEnhancedImages');
     localStorage.removeItem('pendingRequiresLogin');
+}
+
+// Check if payment has been completed for these photos
+async function checkPaymentStatus(photoIds) {
+    try {
+        const response = await fetch('/api/payment/check-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ photo_ids: photoIds })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            // Return true only if payment is confirmed as completed
+            return data.success === true && data.paid === true;
+        }
+        // If check fails, assume payment not completed (require payment)
+        console.warn('Payment status check failed, requiring payment');
+        return false;
+    } catch (error) {
+        console.error('Error checking payment status:', error);
+        // On error, assume payment not completed (require payment)
+        return false;
+    }
+}
+
+// Initiate payment flow
+async function initiatePayment(photoIds) {
+    try {
+        const response = await fetch('/api/payment/create-checkout-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ photo_ids: photoIds })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.url) {
+                // Redirect to Stripe Checkout
+                window.location.href = data.url;
+            } else {
+                alert('Error: Payment session URL not received');
+            }
+        } else {
+            const error = await response.json();
+            alert(`Payment error: ${error.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error initiating payment:', error);
+        alert('An error occurred while initiating payment. Please try again.');
+    }
 }
 
 function downloadImage(url, filename) {
