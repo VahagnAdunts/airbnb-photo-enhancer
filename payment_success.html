@@ -53,12 +53,87 @@
                 </div>
                 {% endif %}
                 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <a href="/dashboard" class="btn btn-primary btn-large">Go to Dashboard</a>
+                    <a href="/dashboard" class="btn btn-primary btn-large" id="dashboardBtn">Go to Dashboard</a>
                     <a href="/" class="btn btn-outline btn-large">Enhance More Photos</a>
                 </div>
             </div>
         </div>
     </section>
+
+    <script>
+        // Auto-download photos after successful payment
+        (function() {
+            const photosData = {{ photos_data|safe }};
+            const photoIds = {{ photo_ids|safe }};
+            
+            if (photosData && photosData.length > 0) {
+                // Convert photos to proper format
+                const photoList = photosData.map(function(photo) {
+                    var filename = photo.enhanced_filename.replace('enhanced_', '').replace('.jpg', '');
+                    return {
+                        id: photo.id,
+                        enhancedUrl: '/api/photos/' + photo.id + '/enhanced',
+                        originalName: filename
+                    };
+                });
+                
+                console.log('Starting auto-download for', photoList.length, 'photos');
+                
+                // Download function
+                function downloadImage(url, filename) {
+                    fetch(url)
+                        .then(function(response) {
+                            return response.blob();
+                        })
+                        .then(function(blob) {
+                            const blobUrl = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.download = filename.endsWith('.jpg') ? filename : filename + '.jpg';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(blobUrl);
+                        })
+                        .catch(function(error) {
+                            console.error('Error downloading image:', error);
+                            // Fallback: open in new tab
+                            window.open(url, '_blank');
+                        });
+                }
+                
+                // Download all photos with slight delay between each
+                let downloadIndex = 0;
+                function downloadNext() {
+                    if (downloadIndex < photoList.length) {
+                        const photo = photoList[downloadIndex];
+                        const filename = photo.originalName.endsWith('.jpg') 
+                            ? photo.originalName 
+                            : photo.originalName + '.jpg';
+                        downloadImage(photo.enhancedUrl, filename);
+                        downloadIndex++;
+                        setTimeout(downloadNext, 300); // 300ms delay between downloads
+                    } else {
+                        // All downloads complete, redirect to dashboard after a short delay
+                        console.log('All downloads complete, redirecting to dashboard...');
+                        setTimeout(function() {
+                            window.location.href = '/dashboard';
+                        }, 500);
+                    }
+                }
+                
+                // Start downloading after a brief delay to let page render
+                setTimeout(function() {
+                    downloadNext();
+                }, 1000);
+            } else {
+                // No photos to download, just redirect to dashboard after a short delay
+                setTimeout(function() {
+                    window.location.href = '/dashboard';
+                }, 2000);
+            }
+        })();
+    </script>
 
     <footer class="home-footer">
         <div class="container-narrow">

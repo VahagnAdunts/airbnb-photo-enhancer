@@ -1118,9 +1118,32 @@ def payment_success():
                 db.session.commit()
                 logger.info(f"Payment {session_id} marked as completed")
             
+            # Get photo IDs from payment to pass to template for auto-download
+            photo_ids = []
+            if payment and payment.photo_ids:
+                try:
+                    photo_ids = json.loads(payment.photo_ids)
+                except:
+                    logger.warning(f"Could not parse photo_ids from payment: {payment.photo_ids}")
+            
+            # Get photo details for download
+            photos_data = []
+            if photo_ids:
+                photos = EnhancedImage.query.filter(
+                    EnhancedImage.id.in_(photo_ids),
+                    EnhancedImage.user_id == current_user.id
+                ).all()
+                # Convert to JSON-serializable format
+                photos_data = [{
+                    'id': photo.id,
+                    'enhanced_filename': photo.enhanced_filename
+                } for photo in photos]
+            
             return render_template('payment_success.html', 
                                  session_id=session_id,
-                                 payment=payment)
+                                 payment=payment,
+                                 photos_data=json.dumps(photos_data),
+                                 photo_ids=json.dumps(photo_ids))
         except Exception as e:
             logger.error(f"Error processing payment success: {e}", exc_info=True)
             flash('Payment was successful, but there was an error processing it. Please contact support.', 'error')
