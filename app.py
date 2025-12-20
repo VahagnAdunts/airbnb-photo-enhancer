@@ -80,8 +80,45 @@ if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
     logger.info("Converted postgres:// to postgresql:// for SQLAlchemy compatibility")
 
+# Configure PostgreSQL SSL and connection pooling for Render
+if database_url.startswith('postgresql://'):
+    # Parse the URL to add SSL parameters if not present
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    parsed = urlparse(database_url)
+    query_params = parse_qs(parsed.query)
+    
+    # Add SSL mode if not already present (required for Render PostgreSQL)
+    if 'sslmode' not in query_params:
+        query_params['sslmode'] = ['require']
+        logger.info("Added sslmode=require to PostgreSQL connection")
+    
+    # Add connection timeout if not present
+    if 'connect_timeout' not in query_params:
+        query_params['connect_timeout'] = ['10']
+    
+    # Reconstruct URL with SSL parameters
+    new_query = urlencode(query_params, doseq=True)
+    database_url = urlunparse((
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+        parsed.params,
+        new_query,
+        parsed.fragment
+    ))
+    logger.info("Configured PostgreSQL with SSL and connection settings")
+
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Connection pool settings for PostgreSQL
+if database_url.startswith('postgresql://'):
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,  # Verify connections before using (handles connection drops)
+        'pool_recycle': 300,    # Recycle connections after 5 minutes
+        'pool_size': 5,         # Number of connections to maintain
+        'max_overflow': 10,     # Additional connections beyond pool_size
+    }
 
 # Google Tag Manager Configuration
 app.config['GTM_CONTAINER_ID'] = os.getenv('GTM_CONTAINER_ID', '')
@@ -411,38 +448,68 @@ def google_callback():
             flash('Failed to retrieve user information from Google.', 'error')
             return redirect(url_for('login'))
         
-        # Check if user exists by Google ID
-        user = User.query.filter_by(google_id=google_id).first()
+        # Database operations with retry logic for connection issues
+        max_retries = 3
+        retry_count = 0
         
-        # If not found by Google ID, check by email
-        if not user:
-            user = User.query.filter_by(email=email).first()
-            if user:
-                # Link Google account to existing user
-                user.google_id = google_id
-                db.session.commit()
-                logger.info(f"Linked Google account to existing user: {email}")
+        while retry_count < max_retries:
+            try:
+                # Check if user exists by Google ID
+                user = User.query.filter_by(google_id=google_id).first()
+                
+                # If not found by Google ID, check by email
+                if not user:
+                    user = User.query.filter_by(email=email).first()
+                    if user:
+                        # Link Google account to existing user
+                        user.google_id = google_id
+                        db.session.commit()
+                        logger.info(f"Linked Google account to existing user: {email}")
+                        break
+                
+                # Create new user if doesn't exist
+                if not user:
+                    # Generate username from email or name
+                    username_base = email.split('@')[0] if email else name.lower().replace(' ', '_')
+                    username = username_base
+                    counter = 1
+                    # Ensure username is unique
+                    while User.query.filter_by(username=username).first():
+                        username = f"{username_base}{counter}"
+                        counter += 1
+                    
+                    user = User(
+                        username=username,
+                        email=email,
+                        google_id=google_id,
+                        password_hash=None  # OAuth users don't have passwords
+                    )
+                    db.session.add(user)
+                    db.session.commit()
+                    logger.info(f"New Google OAuth user created: {username} ({email})")
+                    break
+                
+                # If we got here, user exists and we're done
+                break
+                
+            except Exception as db_error:
+                retry_count += 1
+                db.session.rollback()
+                logger.warning(f"Database error during Google OAuth (attempt {retry_count}/{max_retries}): {db_error}")
+                
+                if retry_count >= max_retries:
+                    logger.error(f"Failed to complete Google OAuth after {max_retries} attempts: {db_error}", exc_info=True)
+                    flash('Database connection error. Please try again.', 'error')
+                    return redirect(url_for('login'))
+                
+                # Wait a bit before retrying
+                import time
+                time.sleep(0.5 * retry_count)  # Exponential backoff
         
-        # Create new user if doesn't exist
         if not user:
-            # Generate username from email or name
-            username_base = email.split('@')[0] if email else name.lower().replace(' ', '_')
-            username = username_base
-            counter = 1
-            # Ensure username is unique
-            while User.query.filter_by(username=username).first():
-                username = f"{username_base}{counter}"
-                counter += 1
-            
-            user = User(
-                username=username,
-                email=email,
-                google_id=google_id,
-                password_hash=None  # OAuth users don't have passwords
-            )
-            db.session.add(user)
-            db.session.commit()
-            logger.info(f"New Google OAuth user created: {username} ({email})")
+            logger.error("Failed to create or retrieve user after retries")
+            flash('Failed to create account. Please try again.', 'error')
+            return redirect(url_for('login'))
         
         # Log the user in
         login_user(user, remember=True)
