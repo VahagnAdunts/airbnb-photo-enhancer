@@ -321,10 +321,29 @@ def login():
             user = User.query.filter_by(username=username).first()
             
             if user and bcrypt.check_password_hash(user.password_hash, password):
-                login_user(user, remember=True)
-                logger.info(f"User {username} logged in successfully")
-                # Check if there's a return URL or pending images
-                return_url = request.args.get('return_url') or request.form.get('return_url')
+            login_user(user, remember=True)
+            logger.info(f"User {username} logged in successfully")
+            
+            # Link any recent photos (created within 1 hour) with user_id=None to this user
+            try:
+                from datetime import timedelta
+                one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+                unlinked_photos = EnhancedImage.query.filter(
+                    EnhancedImage.user_id == None,
+                    EnhancedImage.created_at >= one_hour_ago
+                ).all()
+                
+                if unlinked_photos:
+                    for photo in unlinked_photos:
+                        photo.user_id = user.id
+                    db.session.commit()
+                    logger.info(f"Linked {len(unlinked_photos)} photos to user {user.id} after login")
+            except Exception as link_error:
+                logger.warning(f"Error linking photos after login: {link_error}")
+                db.session.rollback()
+            
+            # Check if there's a return URL or pending images
+            return_url = request.args.get('return_url') or request.form.get('return_url')
                 # If coming from home page, redirect to dashboard to show enhanced photos
                 if return_url == '/' or return_url == url_for('index'):
                     if request.is_json:
@@ -406,6 +425,25 @@ def signup():
                 return jsonify({'error': 'Failed to create account. Please try again.'}), 500
             
             login_user(user, remember=True)
+            
+            # Link any recent photos (created within 1 hour) with user_id=None to this user
+            try:
+                from datetime import timedelta
+                one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+                unlinked_photos = EnhancedImage.query.filter(
+                    EnhancedImage.user_id == None,
+                    EnhancedImage.created_at >= one_hour_ago
+                ).all()
+                
+                if unlinked_photos:
+                    for photo in unlinked_photos:
+                        photo.user_id = user.id
+                    db.session.commit()
+                    logger.info(f"Linked {len(unlinked_photos)} photos to user {user.id} after signup")
+            except Exception as link_error:
+                logger.warning(f"Error linking photos after signup: {link_error}")
+                db.session.rollback()
+            
             # Check if there's a return URL or pending images
             return_url = request.args.get('return_url') or request.form.get('return_url')
             # If coming from home page, redirect to dashboard to show enhanced photos
@@ -1082,12 +1120,41 @@ def create_checkout_session():
         total_amount = photo_count * PHOTO_PRICE_CENTS
         
         # Verify photos belong to user
+        # First, try to find photos that belong to the user
         photos = EnhancedImage.query.filter(
             EnhancedImage.id.in_(photo_ids),
             EnhancedImage.user_id == current_user.id
         ).all()
         
+        # If some photos are missing, check for photos with user_id=None (created before login)
+        # and link them to the current user if they were created recently (within 1 hour)
+        if len(photos) < photo_count:
+            missing_ids = set(photo_ids) - {p.id for p in photos}
+            from datetime import timedelta
+            one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+            
+            # Find unlinked photos created recently
+            unlinked_photos = EnhancedImage.query.filter(
+                EnhancedImage.id.in_(list(missing_ids)),
+                EnhancedImage.user_id == None,
+                EnhancedImage.created_at >= one_hour_ago
+            ).all()
+            
+            # Link these photos to the current user
+            if unlinked_photos:
+                for photo in unlinked_photos:
+                    photo.user_id = current_user.id
+                    logger.info(f"Linking photo {photo.id} to user {current_user.id} (created before login)")
+                db.session.commit()
+                
+                # Re-query to get all photos including newly linked ones
+                photos = EnhancedImage.query.filter(
+                    EnhancedImage.id.in_(photo_ids),
+                    EnhancedImage.user_id == current_user.id
+                ).all()
+        
         if len(photos) != photo_count:
+            logger.warning(f"Payment attempt: User {current_user.id} requested {photo_count} photos but only {len(photos)} found/authorized. Photo IDs: {photo_ids}")
             return jsonify({'error': 'Some photos not found or unauthorized'}), 403
         
         # Create Stripe Checkout Session
