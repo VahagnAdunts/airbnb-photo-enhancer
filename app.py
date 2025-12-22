@@ -321,29 +321,29 @@ def login():
             user = User.query.filter_by(username=username).first()
             
             if user and bcrypt.check_password_hash(user.password_hash, password):
-            login_user(user, remember=True)
-            logger.info(f"User {username} logged in successfully")
-            
-            # Link any recent photos (created within 1 hour) with user_id=None to this user
-            try:
-                from datetime import timedelta
-                one_hour_ago = datetime.utcnow() - timedelta(hours=1)
-                unlinked_photos = EnhancedImage.query.filter(
-                    EnhancedImage.user_id == None,
-                    EnhancedImage.created_at >= one_hour_ago
-                ).all()
+                login_user(user, remember=True)
+                logger.info(f"User {username} logged in successfully")
                 
-                if unlinked_photos:
-                    for photo in unlinked_photos:
-                        photo.user_id = user.id
-                    db.session.commit()
-                    logger.info(f"Linked {len(unlinked_photos)} photos to user {user.id} after login")
-            except Exception as link_error:
-                logger.warning(f"Error linking photos after login: {link_error}")
-                db.session.rollback()
-            
-            # Check if there's a return URL or pending images
-            return_url = request.args.get('return_url') or request.form.get('return_url')
+                # Link any recent photos (created within 1 hour) with user_id=None to this user
+                try:
+                    from datetime import timedelta
+                    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+                    unlinked_photos = EnhancedImage.query.filter(
+                        EnhancedImage.user_id == None,
+                        EnhancedImage.created_at >= one_hour_ago
+                    ).all()
+                    
+                    if unlinked_photos:
+                        for photo in unlinked_photos:
+                            photo.user_id = user.id
+                        db.session.commit()
+                        logger.info(f"Linked {len(unlinked_photos)} photos to user {user.id} after login")
+                except Exception as link_error:
+                    logger.warning(f"Error linking photos after login: {link_error}")
+                    db.session.rollback()
+                
+                # Check if there's a return URL or pending images
+                return_url = request.args.get('return_url') or request.form.get('return_url')
                 # If coming from home page, redirect to dashboard to show enhanced photos
                 if return_url == '/' or return_url == url_for('index'):
                     if request.is_json:
