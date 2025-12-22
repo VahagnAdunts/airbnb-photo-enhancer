@@ -579,6 +579,24 @@ def google_callback():
         login_user(user, remember=True)
         logger.info(f"User {user.username} logged in via Google OAuth")
         
+        # Link any recent photos (created within 1 hour) with user_id=None to this user
+        try:
+            from datetime import timedelta
+            one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+            unlinked_photos = EnhancedImage.query.filter(
+                EnhancedImage.user_id == None,
+                EnhancedImage.created_at >= one_hour_ago
+            ).all()
+            
+            if unlinked_photos:
+                for photo in unlinked_photos:
+                    photo.user_id = user.id
+                db.session.commit()
+                logger.info(f"Linked {len(unlinked_photos)} photos to user {user.id} after Google OAuth login")
+        except Exception as link_error:
+            logger.warning(f"Error linking photos after Google OAuth login: {link_error}")
+            db.session.rollback()
+        
         # Check for return URL from session or request
         return_url = session.pop('return_url', None) or request.args.get('return_url')
         if return_url == '/' or return_url == url_for('index'):
