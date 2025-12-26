@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Primary Meta Tags -->
+    <title>Blog - Elevance AI | Tips & Guides for Airbnb & Real Estate Photography</title>
+    <meta name="title" content="Blog - Elevance AI | Tips & Guides for Airbnb & Real Estate Photography">
+    <meta name="description" content="Expert tips, guides, and insights on Airbnb photography, real estate photo enhancement, and property listing optimization. Learn how to increase bookings with better photos.">
+    <meta name="keywords" content="Airbnb photography tips, real estate photography blog, property photo guides, Airbnb host tips, listing photo optimization, property management blog">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://elevance.art/blog">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://elevance.art/blog">
+    <meta property="og:title" content="Blog - Elevance AI | Photography Tips & Guides">
+    <meta property="og:description" content="Expert tips and guides on Airbnb photography, real estate photo enhancement, and property listing optimization.">
+    <meta property="og:image" content="https://elevance.art/static/images/blog-og.jpg">
+    <meta property="og:site_name" content="Elevance AI">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://elevance.art/blog">
+    <meta name="twitter:title" content="Blog - Elevance AI">
+    <meta name="twitter:description" content="Expert tips and guides on Airbnb photography and real estate photo enhancement.">
+    <meta name="twitter:image" content="https://elevance.art/static/images/blog-twitter.jpg">
+    
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+    
+    <link rel="stylesheet" href="static/css/style.css">
+    
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','{{ gtm_container_id }}');</script>
+    {% endif %}
+    
+    <style>
+        .blog-hero {
+            background: var(--bg-primary);
+            padding: 4rem 0 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .blog-hero h1 {
+            font-size: 2.5rem;
+            font-weight: 400;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .blog-hero p {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .blog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        .blog-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .blog-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .blog-card-image {
+            width: 100%;
+            height: 200px;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: var(--text-light);
+        }
+        .blog-card-content {
+            padding: 1.5rem;
+        }
+        .blog-card-date {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+        .blog-card-title {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+        .blog-card-excerpt {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        .blog-card-read-more {
+            color: var(--primary);
+            font-size: 0.9375rem;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        .blog-card-read-more:hover {
+            text-decoration: underline;
+        }
+        .blog-section {
+            padding: 4rem 0;
+        }
+    </style>
+</head>
+<body>
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    {% endif %}
+    
+    <nav class="navbar navbar-minimal">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/" class="nav-brand-link">
+                    <h2>Elevance AI</h2>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/features" class="nav-link">Features</a>
+                <a href="/pricing" class="nav-link">Pricing</a>
+                <a href="/blog" class="nav-link">Blog</a>
+                <a href="/login" class="nav-link">Sign In</a>
+                <a href="/signup" class="btn btn-primary btn-sm">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="blog-hero">
+        <div class="container-narrow">
+            <h1>Blog & Resources</h1>
+            <p>Expert tips, guides, and insights to help you create stunning property photos and increase bookings</p>
+        </div>
+    </section>
+
+    <section class="blog-section">
+        <div class="container-narrow">
+            <div class="blog-grid">
+                <a href="/blog/10-tips-for-better-airbnb-photos" class="blog-card">
+                    <div class="blog-card-image">📸</div>
+                    <div class="blog-card-content">
+                        <div class="blog-card-date">December 2025</div>
+                        <h3 class="blog-card-title">10 Tips for Better Airbnb Photos</h3>
+                        <p class="blog-card-excerpt">Discover proven strategies to capture stunning photos that attract more guests and increase your booking rate. Learn lighting, composition, and staging techniques.</p>
+                        <span class="blog-card-read-more">Read More →</span>
+                    </div>
+                </a>
+
+                <a href="/blog/how-to-increase-bookings-with-professional-photos" class="blog-card">
+                    <div class="blog-card-image">📈</div>
+                    <div class="blog-card-content">
+                        <div class="blog-card-date">December 2025</div>
+                        <h3 class="blog-card-title">How to Increase Bookings with Professional Photos</h3>
+                        <p class="blog-card-excerpt">Learn how professional photo enhancement can boost your bookings by up to 40%. Real statistics and case studies from successful hosts.</p>
+                        <span class="blog-card-read-more">Read More →</span>
+                    </div>
+                </a>
+
+                <a href="/blog/before-after-airbnb-photo-transformations" class="blog-card">
+                    <div class="blog-card-image">✨</div>
+                    <div class="blog-card-content">
+                        <div class="blog-card-date">December 2025</div>
+                        <h3 class="blog-card-title">Before/After: 20 Airbnb Photo Transformations</h3>
+                        <p class="blog-card-excerpt">See real examples of how AI photo enhancement transformed ordinary property photos into stunning, booking-winning images.</p>
+                        <span class="blog-card-read-more">Read More →</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="home-footer">
+        <div class="container-narrow">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Elevance AI</h3>
+                    <p>AI-powered photo enhancement for real estate professionals. Transform your property photos instantly.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul class="footer-links">
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/pricing">Pricing</a></li>
+                        <li><a href="/blog">Blog</a></li>
+                        <li><a href="/#uploadSection">Try It Free</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul class="footer-links">
+                        <li><a href="/about">About Us</a></li>
+                        <li><a href="/contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <ul class="footer-links">
+                        <li><a href="/terms">Terms of Service</a></li>
+                        <li><a href="/privacy">Privacy Policy</a></li>
+                        <li><a href="/refund">Refund Policy</a></li>
+                        <li><a href="/cookies">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Elevance AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    
+    {% if gtm_container_id %}
+    <script src="static/js/analytics.js"></script>
+    {% endif %}
+</body>
+</html>
+

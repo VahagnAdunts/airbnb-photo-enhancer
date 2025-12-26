@@ -692,6 +692,30 @@ def sitemap():
             'priority': '0.6'
         },
         {
+            'loc': 'https://elevance.art/blog',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'weekly',
+            'priority': '0.8'
+        },
+        {
+            'loc': 'https://elevance.art/blog/10-tips-for-better-airbnb-photos',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/how-to-increase-bookings-with-professional-photos',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/before-after-airbnb-photo-transformations',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
             'loc': 'https://elevance.art/terms',
             'lastmod': datetime.now().strftime('%Y-%m-%d'),
             'changefreq': 'yearly',
@@ -782,6 +806,23 @@ def refund():
 @app.route('/cookies')
 def cookies():
     return render_template('cookies.html')
+
+# Blog Routes
+@app.route('/blog')
+def blog():
+    return render_template('blog.html')
+
+@app.route('/blog/10-tips-for-better-airbnb-photos')
+def blog_10_tips():
+    return render_template('blog_10_tips.html')
+
+@app.route('/blog/how-to-increase-bookings-with-professional-photos')
+def blog_increase_bookings():
+    return render_template('blog_increase_bookings.html')
+
+@app.route('/blog/before-after-airbnb-photo-transformations')
+def blog_before_after():
+    return render_template('blog_before_after.html')
 
 @app.route('/api/enhance', methods=['POST'])
 def enhance_image():
