@@ -501,13 +501,13 @@ function displayResults() {
                 <div class="comparison-side">
                     <div class="comparison-label-small">Before</div>
                     <div class="result-image-container">
-                        <img src="${image.originalUrl}" alt="Original" class="result-image" loading="lazy">
+                        <img src="${image.originalUrl}" alt="Original property photo before AI enhancement" class="result-image" loading="lazy">
                     </div>
                 </div>
                 <div class="comparison-side">
                     <div class="comparison-label-small">After</div>
                     <div class="result-image-container">
-                        <img src="${image.enhancedUrl}" alt="Enhanced" class="result-image" loading="lazy">
+                        <img src="${image.enhancedUrl}" alt="AI-enhanced property photo for Airbnb or real estate listing" class="result-image" loading="lazy">
                     </div>
                 </div>
             </div>
@@ -647,11 +647,11 @@ function showComparison(index) {
     
     content.innerHTML = `
         <div class="comparison-image-wrapper">
-            <img src="${image.originalUrl}" alt="Original" class="comparison-image">
+            <img src="${image.originalUrl}" alt="Original property photo before AI enhancement" class="comparison-image">
             <div class="comparison-label">Original</div>
         </div>
         <div class="comparison-image-wrapper">
-            <img src="${image.enhancedUrl}" alt="Enhanced" class="comparison-image">
+            <img src="${image.enhancedUrl}" alt="AI-enhanced property photo for Airbnb or real estate listing" class="comparison-image">
             <div class="comparison-label">Enhanced</div>
         </div>
     `;

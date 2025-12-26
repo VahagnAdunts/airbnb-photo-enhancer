@@ -654,6 +654,94 @@ def health_check():
             'timestamp': datetime.utcnow().isoformat()
         }), 500
 
+@app.route('/sitemap.xml')
+def sitemap():
+    """Generate sitemap.xml for SEO"""
+    from flask import make_response
+    
+    # List of all public pages with their priorities and change frequencies
+    pages = [
+        {
+            'loc': 'https://elevance.art/',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'daily',
+            'priority': '1.0'
+        },
+        {
+            'loc': 'https://elevance.art/pricing',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'weekly',
+            'priority': '0.9'
+        },
+        {
+            'loc': 'https://elevance.art/features',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.8'
+        },
+        {
+            'loc': 'https://elevance.art/about',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/contact',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.6'
+        },
+        {
+            'loc': 'https://elevance.art/terms',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'yearly',
+            'priority': '0.3'
+        },
+        {
+            'loc': 'https://elevance.art/privacy',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'yearly',
+            'priority': '0.3'
+        },
+        {
+            'loc': 'https://elevance.art/refund',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'yearly',
+            'priority': '0.3'
+        },
+        {
+            'loc': 'https://elevance.art/cookies',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'yearly',
+            'priority': '0.3'
+        },
+    ]
+    
+    sitemap_xml = render_template('sitemap.xml', pages=pages)
+    response = make_response(sitemap_xml)
+    response.headers['Content-Type'] = 'application/xml'
+    return response
+
+@app.route('/robots.txt')
+def robots():
+    """Generate robots.txt for SEO"""
+    from flask import make_response
+    
+    robots_txt = """User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /api/
+Disallow: /payment/
+Disallow: /auth/
+Disallow: /login
+Disallow: /signup
+
+Sitemap: https://elevance.art/sitemap.xml
+"""
+    response = make_response(robots_txt)
+    response.headers['Content-Type'] = 'text/plain'
+    return response
+
 @app.route('/pricing')
 def pricing():
     return render_template('pricing.html')
