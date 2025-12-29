@@ -277,6 +277,22 @@ with app.app_context():
                         conn.execute(text('ALTER TABLE enhanced_image ADD COLUMN enhanced_image_data TEXT'))
                         conn.commit()
                     logger.info("Added enhanced_image_data column")
+            
+            # Check if user table exists and add has_free_access column if needed
+            if 'user' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('user')]
+                
+                if 'has_free_access' not in columns:
+                    logger.info("Adding has_free_access column to user table...")
+                    with db.engine.connect() as conn:
+                        # For SQLite
+                        if db_uri.startswith('sqlite'):
+                            conn.execute(text('ALTER TABLE user ADD COLUMN has_free_access BOOLEAN DEFAULT 0'))
+                        # For PostgreSQL
+                        else:
+                            conn.execute(text('ALTER TABLE "user" ADD COLUMN has_free_access BOOLEAN DEFAULT FALSE'))
+                        conn.commit()
+                    logger.info("Added has_free_access column")
         except Exception as migration_error:
             # Columns might already exist or table might not exist yet - that's okay
             logger.warning(f"Migration check: {migration_error} (columns may already exist or table not created yet)")
@@ -1304,6 +1320,29 @@ def create_checkout_session():
             logger.warning(f"Payment attempt: User {current_user.id} requested {photo_count} photos but only {len(photos)} found/authorized. Photo IDs: {photo_ids}")
             return jsonify({'error': 'Some photos not found or unauthorized'}), 403
         
+        # Check if user has free access - skip payment if they do
+        if current_user.has_free_access:
+            logger.info(f"User {current_user.id} has free access - skipping payment for {photo_count} photos")
+            # Create a "free" payment record for tracking
+            payment = Payment(
+                user_id=current_user.id,
+                stripe_session_id=f'free_access_{current_user.id}_{datetime.utcnow().timestamp()}',
+                amount=0,
+                currency='usd',
+                photo_count=photo_count,
+                photo_ids=json.dumps(photo_ids),
+                status='completed'
+            )
+            payment.completed_at = datetime.utcnow()
+            db.session.add(payment)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'free_access': True,
+                'message': 'Free download granted'
+            })
+        
         # Create Stripe Checkout Session
         try:
             checkout_session = stripe.checkout.Session.create(
@@ -1378,6 +1417,15 @@ def check_payment_status():
         
         if not photo_ids:
             return jsonify({'error': 'No photos specified'}), 400
+        
+        # Check if user has free access - grant access immediately
+        if current_user.has_free_access:
+            logger.info(f"User {current_user.id} has free access - granting download permission")
+            return jsonify({
+                'success': True,
+                'paid': True,
+                'free_access': True
+            })
         
         # Check if payment exists and is completed
         if session_id:
@@ -1533,6 +1581,51 @@ def stripe_webhook():
             logger.info(f"Payment {session['id']} failed via webhook")
     
     return jsonify({'status': 'success'}), 200
+
+# Admin endpoint to manage free access
+@app.route('/api/admin/set-free-access', methods=['POST'])
+def set_free_access():
+    """Set free access for a user by email. Requires ADMIN_SECRET_KEY."""
+    try:
+        admin_secret = os.getenv('ADMIN_SECRET_KEY', '')
+        if not admin_secret:
+            return jsonify({'error': 'Admin feature not configured'}), 500
+        
+        # Check for admin secret in request
+        data = request.get_json() or {}
+        provided_secret = data.get('admin_secret') or request.headers.get('X-Admin-Secret')
+        
+        if provided_secret != admin_secret:
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        email = data.get('email')
+        has_free_access = data.get('has_free_access', True)
+        
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+        
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        user.has_free_access = bool(has_free_access)
+        db.session.commit()
+        
+        logger.info(f"Updated free access for user {user.email} (ID: {user.id}) to {has_free_access}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Free access {"enabled" if has_free_access else "disabled"} for {email}',
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'has_free_access': user.has_free_access
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error setting free access: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'error': 'An error occurred'}), 500
 
 if __name__ == '__main__':
     # Production: Use environment variable for port, default to 5000

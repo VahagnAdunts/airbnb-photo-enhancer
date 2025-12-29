@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     google_id = db.Column(db.String(255), unique=True, nullable=True)  # Google OAuth ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     images_processed = db.Column(db.Integer, default=0)
+    has_free_access = db.Column(db.Boolean, default=False, nullable=False)  # Allows free downloads without payment
     
     # Relationship to enhanced images
     enhanced_images = db.relationship('EnhancedImage', backref='user', lazy=True, cascade='all, delete-orphan')

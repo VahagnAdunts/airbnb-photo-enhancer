@@ -613,6 +613,23 @@ async function initiatePayment(photoIds) {
         
         if (response.ok) {
             const data = await response.json();
+            
+            // Check if user has free access - proceed directly to download
+            if (data.free_access === true) {
+                console.log('Free access granted - proceeding with download');
+                // Proceed with download immediately
+                enhancedImages.forEach((image, index) => {
+                    setTimeout(() => {
+                        downloadImage(image.enhancedUrl, image.originalName);
+                    }, index * 200);
+                });
+                
+                // Clear saved images after successful download
+                localStorage.removeItem('pendingEnhancedImages');
+                localStorage.removeItem('pendingRequiresLogin');
+                return;
+            }
+            
             if (data.url) {
                 // Redirect to Stripe Checkout
                 window.location.href = data.url;
