@@ -1604,7 +1604,9 @@ def set_free_access():
         if not email:
             return jsonify({'error': 'Email is required'}), 400
         
-        user = User.query.filter_by(email=email).first()
+        # Case-insensitive email lookup
+        from sqlalchemy import func
+        user = User.query.filter(func.lower(User.email) == func.lower(email)).first()
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
