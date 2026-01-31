@@ -1585,7 +1585,7 @@ def stripe_webhook():
 # Admin endpoint to manage free access
 @app.route('/api/admin/set-free-access', methods=['POST'])
 def set_free_access():
-    """Set free access for a user by email. Requires ADMIN_SECRET_KEY."""
+    """Set free access for a user by email or username. Requires ADMIN_SECRET_KEY."""
     try:
         admin_secret = os.getenv('ADMIN_SECRET_KEY', '')
         if not admin_secret:
@@ -1599,28 +1599,39 @@ def set_free_access():
             return jsonify({'error': 'Unauthorized'}), 401
         
         email = data.get('email')
+        username = data.get('username')
         has_free_access = data.get('has_free_access', True)
         
-        if not email:
-            return jsonify({'error': 'Email is required'}), 400
+        if not email and not username:
+            return jsonify({'error': 'Email or username is required'}), 400
         
-        # Case-insensitive email lookup
+        # Case-insensitive lookup by email or username
         from sqlalchemy import func
-        user = User.query.filter(func.lower(User.email) == func.lower(email)).first()
+        user = None
+        
+        if email:
+            user = User.query.filter(func.lower(User.email) == func.lower(email)).first()
+        
+        if not user and username:
+            user = User.query.filter(func.lower(User.username) == func.lower(username)).first()
+        
         if not user:
-            return jsonify({'error': 'User not found'}), 404
+            identifier = email or username
+            return jsonify({'error': f'User not found: {identifier}'}), 404
         
         user.has_free_access = bool(has_free_access)
         db.session.commit()
         
-        logger.info(f"Updated free access for user {user.email} (ID: {user.id}) to {has_free_access}")
+        identifier = email or username
+        logger.info(f"Updated free access for user {user.email} (username: {user.username}, ID: {user.id}) to {has_free_access}")
         
         return jsonify({
             'success': True,
-            'message': f'Free access {"enabled" if has_free_access else "disabled"} for {email}',
+            'message': f'Free access {"enabled" if has_free_access else "disabled"} for {identifier}',
             'user': {
                 'id': user.id,
                 'email': user.email,
+                'username': user.username,
                 'has_free_access': user.has_free_access
             }
         })
