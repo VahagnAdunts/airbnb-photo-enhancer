@@ -12,6 +12,14 @@ const deselectAllBtn = document.getElementById('deselectAllBtn');
 const selectionCount = document.getElementById('selectionCount');
 
 let enhancedImages = [];
+let paginationState = {
+    currentPage: 1,
+    perPage: 10,
+    totalPages: 0,
+    totalPhotos: 0,
+    hasNext: false,
+    hasPrev: false
+};
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -24,13 +32,23 @@ document.addEventListener('DOMContentLoaded', function() {
         setupUploadHandlers();
     }
     
+    // Setup pagination button handlers
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', goToPrevPage);
+    }
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', goToNextPage);
+    }
+    
     // Load enhanced images from localStorage (if user was redirected from home page)
     // Use a small delay to ensure all DOM elements are ready
     setTimeout(function() {
         const hasLocalStorageImages = loadEnhancedImagesFromStorage();
         // If no localStorage images, load from database
         if (!hasLocalStorageImages) {
-            loadUserPhotosFromDatabase();
+            loadUserPhotosFromDatabase(1);
         }
     }, 100);
 });
@@ -180,9 +198,9 @@ function loadEnhancedImagesFromStorage() {
     }
 }
 
-// Load user's previously enhanced photos from database
-async function loadUserPhotosFromDatabase() {
-    console.log('Loading user photos from database...');
+// Load user's previously enhanced photos from database with pagination
+async function loadUserPhotosFromDatabase(page = 1) {
+    console.log(`Loading user photos from database (page ${page})...`);
     
     const resultsSectionEl = document.getElementById('resultsSection');
     const resultsGridEl = document.getElementById('resultsGrid');
@@ -194,19 +212,38 @@ async function loadUserPhotosFromDatabase() {
     }
     
     try {
-        const response = await fetch('/api/photos?per_page=50');
+        const response = await fetch(`/api/photos?page=${page}&per_page=${paginationState.perPage}`);
         if (!response.ok) {
             console.error('Failed to load photos from database:', response.status);
             return;
         }
         
         const data = await response.json();
-        if (!data.success || !data.photos || data.photos.length === 0) {
-            console.log('No photos found in database');
+        if (!data.success) {
+            console.log('Failed to load photos:', data.error || 'Unknown error');
             return;
         }
         
-        console.log('Found', data.photos.length, 'photos in database');
+        // Update pagination state
+        if (data.pagination) {
+            paginationState.currentPage = data.pagination.page;
+            paginationState.totalPages = data.pagination.pages;
+            paginationState.totalPhotos = data.pagination.total;
+            paginationState.hasNext = data.pagination.has_next;
+            paginationState.hasPrev = data.pagination.has_prev;
+        }
+        
+        if (!data.photos || data.photos.length === 0) {
+            console.log('No photos found in database');
+            if (page === 1) {
+                // Only hide if this is the first page load
+                resultsSectionEl.style.display = 'none';
+            }
+            updatePaginationControls();
+            return;
+        }
+        
+        console.log(`Found ${data.photos.length} photos on page ${page} (${paginationState.totalPhotos} total)`);
         
         // Convert database photo format to display format
         enhancedImages = data.photos.map(photo => ({
@@ -215,25 +252,112 @@ async function loadUserPhotosFromDatabase() {
             originalUrl: `/api/photos/${photo.id}/original`,
             enhancedUrl: `/api/photos/${photo.id}/enhanced`,
             enhancements: photo.enhancement_settings || {},
-            createdAt: photo.created_at
+            createdAt: photo.created_at,
+            selected: false
         }));
         
-        if (enhancedImages.length > 0) {
-            // Display the photos
-            displayResults();
-            resultsSectionEl.style.display = 'block';
-            
-            console.log('Successfully loaded and displayed', enhancedImages.length, 'photos from database');
-            
-            // Scroll to results section after a short delay
-            setTimeout(() => {
-                resultsSectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 300);
-        }
+        // Display the photos
+        displayResults();
+        resultsSectionEl.style.display = 'block';
+        updatePaginationControls();
+        
+        console.log('Successfully loaded and displayed', enhancedImages.length, 'photos from database');
+        
+        // Scroll to results section after a short delay
+        setTimeout(() => {
+            resultsSectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
     } catch (error) {
         console.error('Error loading photos from database:', error);
     }
 }
+
+// Update pagination controls
+function updatePaginationControls() {
+    const paginationContainer = document.getElementById('paginationContainer');
+    const paginationInfo = document.getElementById('paginationInfo');
+    const paginationPages = document.getElementById('paginationPages');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    
+    if (!paginationContainer || !paginationInfo || !paginationPages || !prevPageBtn || !nextPageBtn) {
+        return;
+    }
+    
+    // Show pagination only if there are multiple pages
+    if (paginationState.totalPages > 1) {
+        paginationContainer.style.display = 'flex';
+        
+        // Update info text
+        const start = (paginationState.currentPage - 1) * paginationState.perPage + 1;
+        const end = Math.min(paginationState.currentPage * paginationState.perPage, paginationState.totalPhotos);
+        paginationInfo.textContent = `Showing ${start}-${end} of ${paginationState.totalPhotos} photos`;
+        
+        // Update page numbers
+        let pageNumbers = '';
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, paginationState.currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(paginationState.totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        if (startPage > 1) {
+            pageNumbers += `<button class="pagination-page-btn" onclick="goToPage(1)">1</button>`;
+            if (startPage > 2) {
+                pageNumbers += `<span class="pagination-ellipsis">...</span>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === paginationState.currentPage) {
+                pageNumbers += `<button class="pagination-page-btn active" onclick="goToPage(${i})">${i}</button>`;
+            } else {
+                pageNumbers += `<button class="pagination-page-btn" onclick="goToPage(${i})">${i}</button>`;
+            }
+        }
+        
+        if (endPage < paginationState.totalPages) {
+            if (endPage < paginationState.totalPages - 1) {
+                pageNumbers += `<span class="pagination-ellipsis">...</span>`;
+            }
+            pageNumbers += `<button class="pagination-page-btn" onclick="goToPage(${paginationState.totalPages})">${paginationState.totalPages}</button>`;
+        }
+        
+        paginationPages.innerHTML = pageNumbers;
+        
+        // Update prev/next buttons
+        prevPageBtn.disabled = !paginationState.hasPrev;
+        nextPageBtn.disabled = !paginationState.hasNext;
+    } else {
+        paginationContainer.style.display = 'none';
+    }
+}
+
+// Navigation functions
+function goToPage(page) {
+    if (page >= 1 && page <= paginationState.totalPages && page !== paginationState.currentPage) {
+        loadUserPhotosFromDatabase(page);
+    }
+}
+
+function goToNextPage() {
+    if (paginationState.hasNext) {
+        goToPage(paginationState.currentPage + 1);
+    }
+}
+
+function goToPrevPage() {
+    if (paginationState.hasPrev) {
+        goToPage(paginationState.currentPage - 1);
+    }
+}
+
+// Make functions globally available for onclick handlers
+window.goToPage = goToPage;
+window.goToNextPage = goToNextPage;
+window.goToPrevPage = goToPrevPage;
 
 async function loadUserStats() {
     try {
@@ -355,6 +479,12 @@ async function handleFiles(files) {
         displayResults();
         progressSection.style.display = 'none';
         resultsSection.style.display = 'block';
+        
+        // After successful uploads, reload from database to show paginated view
+        // This ensures new photos appear in the correct pagination context
+        setTimeout(() => {
+            loadUserPhotosFromDatabase(1);
+        }, 1000);
     } else {
         progressSection.style.display = 'none';
     }
