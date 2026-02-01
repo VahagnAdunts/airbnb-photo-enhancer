@@ -988,9 +988,30 @@ def enhance_image():
             # Use retry logic for database commit to handle recovery mode and connection errors
             def commit_operation():
                 db.session.commit()
+                # Refresh the record to ensure we have the ID after commit
+                db.session.refresh(enhanced_image_record)
+                # Verify the ID was set
+                if enhanced_image_record.id is None:
+                    raise Exception("Image ID was not set after commit")
                 return enhanced_image_record
             
+            # Retry commit and get the record back
             enhanced_image_record = retry_db_operation(commit_operation, max_retries=3, initial_delay=2, max_delay=10)
+            
+            # Double-check the ID is set
+            if enhanced_image_record.id is None:
+                logger.error(f"Image ID is None after commit for {filename}")
+                # Try to query the record again by filename and user_id
+                recent_photo = EnhancedImage.query.filter_by(
+                    user_id=user_id,
+                    original_filename=filename
+                ).order_by(EnhancedImage.created_at.desc()).first()
+                if recent_photo and recent_photo.id:
+                    enhanced_image_record = recent_photo
+                    logger.info(f"Found image record with ID {recent_photo.id} by querying")
+                else:
+                    raise Exception("Image ID is None and could not be found by query")
+            
             logger.info(f"Image enhanced and saved successfully: {filename} (ID: {enhanced_image_record.id}, User ID: {user_id})")
         except Exception as db_error:
             db.session.rollback()
@@ -1181,9 +1202,16 @@ def serve_original_photo(photo_id):
         
         # If file doesn't exist, serve from database (base64)
         if photo.original_image_data:
-            logger.info(f"Serving original image {photo_id} from database (file not found)")
-            image_bytes = base64.b64decode(photo.original_image_data)
-            return send_file(BytesIO(image_bytes), mimetype='image/jpeg', download_name=photo.original_filename)
+            try:
+                logger.info(f"Serving original image {photo_id} from database (file not found)")
+                image_bytes = base64.b64decode(photo.original_image_data)
+                if len(image_bytes) == 0:
+                    logger.warning(f"Original image {photo_id} has empty base64 data")
+                    return jsonify({'error': 'Image data is empty'}), 404
+                return send_file(BytesIO(image_bytes), mimetype='image/jpeg', download_name=photo.original_filename)
+            except Exception as decode_error:
+                logger.error(f"Error decoding original image {photo_id} from base64: {decode_error}")
+                return jsonify({'error': 'Failed to decode image data'}), 500
         
         # Neither file nor database data available
         logger.warning(f"Original image {photo_id} not found in file system or database")
@@ -1209,9 +1237,16 @@ def serve_enhanced_photo(photo_id):
         
         # If file doesn't exist, serve from database (base64)
         if photo.enhanced_image_data:
-            logger.info(f"Serving enhanced image {photo_id} from database (file not found)")
-            image_bytes = base64.b64decode(photo.enhanced_image_data)
-            return send_file(BytesIO(image_bytes), mimetype='image/jpeg', download_name=photo.enhanced_filename)
+            try:
+                logger.info(f"Serving enhanced image {photo_id} from database (file not found)")
+                image_bytes = base64.b64decode(photo.enhanced_image_data)
+                if len(image_bytes) == 0:
+                    logger.warning(f"Enhanced image {photo_id} has empty base64 data")
+                    return jsonify({'error': 'Image data is empty'}), 404
+                return send_file(BytesIO(image_bytes), mimetype='image/jpeg', download_name=photo.enhanced_filename)
+            except Exception as decode_error:
+                logger.error(f"Error decoding enhanced image {photo_id} from base64: {decode_error}")
+                return jsonify({'error': 'Failed to decode image data'}), 500
         
         # Neither file nor database data available
         logger.warning(f"Enhanced image {photo_id} not found in file system or database")
