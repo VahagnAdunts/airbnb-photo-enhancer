@@ -8,6 +8,7 @@ import base64
 import json
 import logging
 import re
+import time
 from datetime import datetime
 from io import BytesIO
 from PIL import Image
@@ -16,6 +17,7 @@ from dotenv import load_dotenv
 from image_enhancer import ImageEnhancer
 from models import db, User, EnhancedImage, Payment
 import stripe
+from sqlalchemy.exc import OperationalError
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,6 +34,61 @@ logging.basicConfig(
     handlers=log_handlers
 )
 logger = logging.getLogger(__name__)
+
+# Database retry utility for handling transient connection errors
+def retry_db_operation(operation, max_retries=3, initial_delay=1, max_delay=10):
+    """
+    Retry a database operation with exponential backoff.
+    Handles recovery mode and connection errors.
+    
+    Args:
+        operation: Callable that performs the database operation
+        max_retries: Maximum number of retry attempts
+        initial_delay: Initial delay in seconds before first retry
+        max_delay: Maximum delay between retries in seconds
+    
+    Returns:
+        Result of the operation
+    
+    Raises:
+        Last exception if all retries fail
+    """
+    last_exception = None
+    delay = initial_delay
+    
+    for attempt in range(max_retries + 1):
+        try:
+            return operation()
+        except OperationalError as e:
+            error_str = str(e).lower()
+            # Check if it's a recoverable error
+            is_recovery_mode = 'recovery mode' in error_str
+            is_connection_error = any(term in error_str for term in [
+                'eof detected', 'connection', 'ssl syscall', 'server closed',
+                'connection reset', 'broken pipe'
+            ])
+            
+            if (is_recovery_mode or is_connection_error) and attempt < max_retries:
+                last_exception = e
+                logger.warning(
+                    f"Database operation failed (attempt {attempt + 1}/{max_retries + 1}): {type(e).__name__}. "
+                    f"Retrying in {delay}s..."
+                )
+                time.sleep(delay)
+                delay = min(delay * 2, max_delay)  # Exponential backoff
+                # Force session refresh to get a new connection
+                db.session.rollback()
+                continue
+            else:
+                # Not a recoverable error or max retries reached
+                raise
+        except Exception as e:
+            # For non-OperationalError exceptions, don't retry
+            raise
+    
+    # If we exhausted all retries, raise the last exception
+    if last_exception:
+        raise last_exception
 
 # Verify Stripe library is properly installed (after logger is initialized)
 try:
@@ -899,7 +956,7 @@ def enhance_image():
             logger.error(f"Error encoding images for database storage: {encode_error}")
             # Continue without base64 storage - files will still work if they exist
         
-        # Save photo records to database with transaction
+        # Save photo records to database with transaction (with retry logic)
         try:
             # Check if user is authenticated
             user_id = current_user.id if current_user.is_authenticated else None
@@ -928,10 +985,21 @@ def enhance_image():
                 current_user.images_processed += 1
                 logger.info(f"Updating user {user_id} processed images count to {current_user.images_processed}")
             
-            db.session.commit()
+            # Use retry logic for database commit to handle recovery mode and connection errors
+            def commit_operation():
+                db.session.commit()
+                return enhanced_image_record
+            
+            enhanced_image_record = retry_db_operation(commit_operation, max_retries=3, initial_delay=2, max_delay=10)
             logger.info(f"Image enhanced and saved successfully: {filename} (ID: {enhanced_image_record.id}, User ID: {user_id})")
         except Exception as db_error:
             db.session.rollback()
+            error_str = str(db_error).lower()
+            is_recovery_mode = 'recovery mode' in error_str
+            is_connection_error = any(term in error_str for term in [
+                'eof detected', 'connection', 'ssl syscall', 'server closed'
+            ])
+            
             logger.error(f"Database error during image save: {db_error}", exc_info=True)
             logger.error(f"Database URI: {app.config['SQLALCHEMY_DATABASE_URI'][:50]}...")  # Log partial URI
             logger.error(f"User authenticated: {current_user.is_authenticated}")
@@ -950,9 +1018,17 @@ def enhance_image():
                 except Exception as cleanup_error:
                     logger.warning(f"Failed to cleanup enhanced file: {cleanup_error}")
             
+            # Provide user-friendly error message
+            if is_recovery_mode:
+                error_message = 'The database is temporarily unavailable. Please try again in a few moments.'
+            elif is_connection_error:
+                error_message = 'Database connection error. Please try again.'
+            else:
+                error_message = 'Failed to save image record. Please try again or contact support if the issue persists.'
+            
             return jsonify({
-                'error': 'Failed to save image record to database. Please check server logs.',
-                'details': 'Database connection or table creation may have failed.'
+                'error': error_message,
+                'details': 'The image was enhanced but could not be saved. Please try uploading again.'
             }), 500
         
         # Convert to base64 for response
