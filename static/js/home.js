@@ -46,7 +46,7 @@ function updateDownloadSection(isAuthenticated) {
             const totalPrice = (enhancedImages.length * 0.55).toFixed(2);
             message.textContent = `You've enhanced ${enhancedImages.length} photo${enhancedImages.length > 1 ? 's' : ''}. Payment required: $${totalPrice}`;
         } else {
-            message.textContent = `You've enhanced ${enhancedImages.length} photo${enhancedImages.length > 1 ? 's' : ''}. Ready to download!`;
+        message.textContent = `You've enhanced ${enhancedImages.length} photo${enhancedImages.length > 1 ? 's' : ''}. Ready to download!`;
         }
         
         resultsNote.appendChild(message);
@@ -64,7 +64,7 @@ function updateDownloadSection(isAuthenticated) {
             const totalPrice = (enhancedImages.length * 0.55).toFixed(2);
             downloadBtn.textContent = `Download All ${enhancedImages.length} Photo${enhancedImages.length > 1 ? 's' : ''} - $${totalPrice}`;
         } else {
-            downloadBtn.textContent = `Download All ${enhancedImages.length} Photo${enhancedImages.length > 1 ? 's' : ''}`;
+        downloadBtn.textContent = `Download All ${enhancedImages.length} Photo${enhancedImages.length > 1 ? 's' : ''}`;
         }
         
         downloadBtn.onclick = downloadAllImages;
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setupUploadHandlers();
             
             if (enhancedImages.length > 0) {
-                setTimeout(() => checkAuthStatus(), 100);
+            setTimeout(() => checkAuthStatus(), 100);
             }
         }
     });

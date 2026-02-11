@@ -122,3 +122,7 @@ python enable_free_access.py
 - **Default Value**: New users have `has_free_access = False` by default
 - **Database**: If you see errors about missing column, restart the app to trigger migration
 
+
+
+
+
