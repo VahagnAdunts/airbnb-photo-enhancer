@@ -592,9 +592,9 @@ function displayResults() {
             </div>
             <div class="result-comparison">
                 <div class="comparison-side">
-                    <div class="comparison-label-small">Before</div>
+                    <div class="comparison-label-small">${image.conversionType === 'night_conversion' ? 'Day' : 'Before'}</div>
                     <div class="result-image-container">
-                        <img src="${image.originalUrl}" alt="Original" class="result-image" loading="lazy">
+                        <img src="${image.originalUrl}" alt="${image.conversionType === 'night_conversion' ? 'Original day property photo' : 'Original'}" class="result-image" loading="lazy">
                     </div>
                 </div>
                 <div class="comparison-side">
