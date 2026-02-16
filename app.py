@@ -334,6 +334,18 @@ with app.app_context():
                         conn.execute(text('ALTER TABLE enhanced_image ADD COLUMN enhanced_image_data TEXT'))
                         conn.commit()
                     logger.info("Added enhanced_image_data column")
+                
+                if 'conversion_type' not in columns:
+                    logger.info("Adding conversion_type column to enhanced_image table...")
+                    with db.engine.connect() as conn:
+                        # For SQLite
+                        if db_uri.startswith('sqlite'):
+                            conn.execute(text('ALTER TABLE enhanced_image ADD COLUMN conversion_type VARCHAR(20) DEFAULT "enhancement"'))
+                        # For PostgreSQL
+                        else:
+                            conn.execute(text('ALTER TABLE "enhanced_image" ADD COLUMN conversion_type VARCHAR(20) DEFAULT \'enhancement\''))
+                        conn.commit()
+                    logger.info("Added conversion_type column")
             
             # Check if user table exists and add has_free_access column if needed
             if 'user' in inspector.get_table_names():
@@ -897,6 +909,206 @@ def blog_increase_bookings():
 def blog_before_after():
     return render_template('blog_before_after.html')
 
+@app.route('/api/convert-to-night', methods=['POST'])
+def convert_to_night():
+    """Convert a day photo to a night photo"""
+    try:
+        if 'image' not in request.files:
+            logger.warning("Night conversion request without image file")
+            return jsonify({'error': 'No image file provided'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            logger.warning("Night conversion request with empty filename")
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            logger.warning(f"Invalid file type attempted: {file.filename}")
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        # Save original image
+        filename = secure_filename(file.filename)
+        original_path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(original_path)
+        
+        # Convert to night
+        night_path, conversion_info = enhancer.convert_to_night(original_path, filename)
+        
+        # Get file sizes
+        original_file_size = os.path.getsize(original_path)
+        night_file_size = os.path.getsize(night_path)
+        
+        # Get night filename from path
+        night_filename = os.path.basename(night_path)
+        
+        # Read images as base64 for database storage (persists across deployments)
+        original_image_data = None
+        night_image_data = None
+        try:
+            with open(original_path, 'rb') as f:
+                original_image_data = base64.b64encode(f.read()).decode('utf-8')
+            with open(night_path, 'rb') as f:
+                night_image_data = base64.b64encode(f.read()).decode('utf-8')
+            logger.info("Images encoded as base64 for database storage")
+        except Exception as encode_error:
+            logger.error(f"Error encoding images for database storage: {encode_error}")
+            # Continue without base64 storage - files will still work if they exist
+        
+        # Save photo records to database with transaction (with retry logic)
+        try:
+            # Check if user is authenticated
+            user_id = current_user.id if current_user.is_authenticated else None
+            logger.info(f"Saving night-converted image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}")
+            
+            enhanced_image_record = EnhancedImage(
+                user_id=user_id,
+                original_filename=filename,
+                original_path=original_path,
+                original_file_size=original_file_size,
+                enhanced_filename=night_filename,
+                enhanced_path=night_path,
+                enhanced_file_size=night_file_size,
+                original_image_data=original_image_data,
+                enhanced_image_data=night_image_data,
+                conversion_type='night_conversion',
+                change_intensity='moderate',  # Not used for night conversion but required
+                detail_level='moderate',  # Not used for night conversion but required
+                enhancement_settings=json.dumps(conversion_info) if conversion_info else None,
+                ai_analysis=conversion_info.get('response', '') if conversion_info else None
+            )
+            
+            db.session.add(enhanced_image_record)
+            
+            # Update user's processed images count if logged in
+            if current_user.is_authenticated:
+                current_user.images_processed += 1
+                logger.info(f"Updating user {user_id} processed images count to {current_user.images_processed}")
+            
+            # Use retry logic for database commit to handle recovery mode and connection errors
+            def commit_operation():
+                db.session.commit()
+                # Refresh the record to ensure we have the ID after commit
+                db.session.refresh(enhanced_image_record)
+                # Verify the ID was set
+                if enhanced_image_record.id is None:
+                    raise Exception("Image ID was not set after commit")
+                return enhanced_image_record
+            
+            # Retry commit and get the record back
+            enhanced_image_record = retry_db_operation(commit_operation, max_retries=3, initial_delay=2, max_delay=10)
+            
+            # Double-check the ID is set
+            if enhanced_image_record.id is None:
+                logger.error(f"Image ID is None after commit for {filename}")
+                # Try to query the record again by filename and user_id
+                recent_photo = EnhancedImage.query.filter_by(
+                    user_id=user_id,
+                    original_filename=filename,
+                    conversion_type='night_conversion'
+                ).order_by(EnhancedImage.created_at.desc()).first()
+                if recent_photo and recent_photo.id:
+                    enhanced_image_record = recent_photo
+                    logger.info(f"Found image record with ID {recent_photo.id} by querying")
+                else:
+                    raise Exception("Image ID is None and could not be found by query")
+            
+            logger.info(f"Image converted to night and saved successfully: {filename} (ID: {enhanced_image_record.id}, User ID: {user_id})")
+        except Exception as db_error:
+            db.session.rollback()
+            error_str = str(db_error).lower()
+            is_recovery_mode = 'recovery mode' in error_str
+            is_connection_error = any(term in error_str for term in [
+                'eof detected', 'connection', 'ssl syscall', 'server closed'
+            ])
+            
+            logger.error(f"Database error during image save: {db_error}", exc_info=True)
+            logger.error(f"Database URI: {app.config['SQLALCHEMY_DATABASE_URI'][:50]}...")  # Log partial URI
+            logger.error(f"User authenticated: {current_user.is_authenticated}")
+            if current_user.is_authenticated:
+                logger.error(f"User ID: {current_user.id}")
+            
+            # Clean up files if database save failed
+            if os.path.exists(original_path):
+                try:
+                    os.remove(original_path)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup original file: {cleanup_error}")
+            if os.path.exists(night_path):
+                try:
+                    os.remove(night_path)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup night file: {cleanup_error}")
+            
+            # Provide user-friendly error message
+            if is_recovery_mode:
+                error_message = 'The database is temporarily unavailable. Please try again in a few moments.'
+            elif is_connection_error:
+                error_message = 'Database connection error. Please try again.'
+            else:
+                error_message = 'Failed to save image record. Please try again or contact support if the issue persists.'
+            
+            return jsonify({
+                'error': error_message,
+                'details': 'The image was converted but could not be saved. Please try uploading again.'
+            }), 500
+        
+        # Convert to base64 for response
+        # Try to read from file first, fallback to database if file doesn't exist
+        original_url = None
+        night_url = None
+        
+        try:
+            if os.path.exists(original_path):
+                with open(original_path, 'rb') as f:
+                    original_data = base64.b64encode(f.read()).decode('utf-8')
+                    original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{original_data}"
+            elif enhanced_image_record.original_image_data:
+                # Use database-stored image
+                original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{enhanced_image_record.original_image_data}"
+                logger.info("Using database-stored original image for response")
+        except Exception as e:
+            logger.error(f"Error reading original image for response: {e}")
+            # Try database fallback
+            if enhanced_image_record.original_image_data:
+                original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{enhanced_image_record.original_image_data}"
+        
+        try:
+            if os.path.exists(night_path):
+                with open(night_path, 'rb') as f:
+                    night_data = base64.b64encode(f.read()).decode('utf-8')
+                    night_url = f"data:image/jpeg;base64,{night_data}"
+            elif enhanced_image_record.enhanced_image_data:
+                # Use database-stored image
+                night_url = f"data:image/jpeg;base64,{enhanced_image_record.enhanced_image_data}"
+                logger.info("Using database-stored night-converted image for response")
+        except Exception as e:
+            logger.error(f"Error reading night image for response: {e}")
+            # Try database fallback
+            if enhanced_image_record.enhanced_image_data:
+                night_url = f"data:image/jpeg;base64,{enhanced_image_record.enhanced_image_data}"
+        
+        # If we still don't have URLs, something went wrong
+        if not original_url or not night_url:
+            logger.error(f"Failed to generate image URLs. Original: {bool(original_url)}, Night: {bool(night_url)}")
+            return jsonify({
+                'error': 'Failed to process images. Please try again.',
+                'details': 'Image files could not be read or encoded.'
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'original_image_url': original_url,
+            'enhanced_image_url': night_url,  # Using same field name for consistency
+            'enhancements': conversion_info,
+            'image_id': enhanced_image_record.id,
+            'requires_login': not current_user.is_authenticated,
+            'conversion_type': 'night_conversion'
+        })
+    
+    except Exception as e:
+        logger.error(f"Error in convert_to_night endpoint: {e}", exc_info=True)
+        return jsonify({'error': 'An error occurred while processing the image'}), 500
+
 @app.route('/api/enhance', methods=['POST'])
 def enhance_image():
     try:
@@ -972,6 +1184,7 @@ def enhance_image():
                 enhanced_file_size=enhanced_file_size,
                 original_image_data=original_image_data,
                 enhanced_image_data=enhanced_image_data,
+                conversion_type='enhancement',
                 change_intensity=change_intensity,
                 detail_level=detail_level,
                 enhancement_settings=json.dumps(enhancements) if enhancements else None,

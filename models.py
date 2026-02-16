@@ -44,6 +44,7 @@ class EnhancedImage(db.Model):
     enhanced_image_data = db.Column(db.Text, nullable=True)  # Base64 encoded enhanced image
     
     # Enhancement settings and metadata
+    conversion_type = db.Column(db.String(20), default='enhancement')  # 'enhancement' or 'night_conversion'
     change_intensity = db.Column(db.String(20), default='moderate')  # minimal, moderate, extensive
     detail_level = db.Column(db.String(20), default='moderate')  # minimal, moderate, extensive
     enhancement_settings = db.Column(db.Text)  # JSON string of enhancement details
@@ -63,6 +64,7 @@ class EnhancedImage(db.Model):
             'enhanced_filename': self.enhanced_filename,
             'enhanced_path': self.enhanced_path,
             'enhanced_file_size': self.enhanced_file_size,
+            'conversion_type': self.conversion_type,
             'change_intensity': self.change_intensity,
             'detail_level': self.detail_level,
             'enhancement_settings': json.loads(self.enhancement_settings) if self.enhancement_settings else None,

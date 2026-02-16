@@ -344,6 +344,13 @@ body {
     margin-bottom: 0.5rem;
 }
 
+.setting-hint {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    line-height: 1.5;
+}
+
 .radio-group {
     display: flex;
     gap: 1rem;
