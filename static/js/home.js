@@ -317,18 +317,21 @@ function setupUploadHandlers() {
         return;
     }
     
-    // Remove existing listeners to avoid duplicates
+    // Remove existing listeners by cloning and replacing elements
     const newUploadArea = uploadAreaEl.cloneNode(true);
     uploadAreaEl.parentNode.replaceChild(newUploadArea, uploadAreaEl);
     
     const newFileInput = fileInputEl.cloneNode(true);
     fileInputEl.parentNode.replaceChild(newFileInput, fileInputEl);
     
-    // Upload area click handler
+    // Upload area click handler - use the new file input directly
     newUploadArea.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        newFileInput.click();
+        // Use the newFileInput we just created
+        if (newFileInput) {
+            newFileInput.click();
+        }
     });
 
     // File input change handler
@@ -364,11 +367,6 @@ function setupUploadHandlers() {
     console.log('Upload handlers initialized successfully');
 }
 
-// Initialize upload handlers on page load
-if (uploadArea && fileInput) {
-    setupUploadHandlers();
-}
-
 // Setup feature type toggle (Enhancement vs Night Conversion)
 function setupFeatureTypeToggle() {
     const featureTypeRadios = document.querySelectorAll('input[name="feature_type"]');
@@ -396,6 +394,11 @@ function setupFeatureTypeToggle() {
                 featureHint.textContent = 'Enhance your photos for better Airbnb and Booking.com listings';
             }
         }
+        
+        // Re-initialize upload handlers after UI update to ensure they work
+        setTimeout(() => {
+            setupUploadHandlers();
+        }, 100);
     }
     
     // Add event listeners
@@ -405,6 +408,11 @@ function setupFeatureTypeToggle() {
     
     // Initialize UI
     updateFeatureUI();
+}
+
+// Initialize upload handlers on page load
+if (uploadArea && fileInput) {
+    setupUploadHandlers();
 }
 
 async function handleFiles(files) {
