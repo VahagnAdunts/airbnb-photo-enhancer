@@ -75,6 +75,20 @@
         <div class="upload-section">
             <div class="enhancement-settings">
                 <div class="setting-group">
+                    <label class="setting-label">Feature</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="feature_type" value="enhancement" checked>
+                            <span>Enhancement</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="feature_type" value="night_conversion">
+                            <span>Night Conversion</span>
+                        </label>
+                    </div>
+                    <p class="setting-hint" id="featureHint">Enhance your photos for better Airbnb and Booking.com listings</p>
+                </div>
+                <div class="setting-group" id="enhancementSettings">
                     <label class="setting-label">Change Intensity</label>
                     <div class="radio-group">
                         <label class="radio-option">
@@ -91,7 +105,7 @@
                         </label>
                     </div>
                 </div>
-                <div class="setting-group">
+                <div class="setting-group" id="detailLevelSettings">
                     <label class="setting-label">Detail Level</label>
                     <div class="radio-group">
                         <label class="radio-option">

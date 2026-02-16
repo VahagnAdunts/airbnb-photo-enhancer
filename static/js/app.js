@@ -32,6 +32,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setupUploadHandlers();
     }
     
+    // Setup feature type toggle
+    setupFeatureTypeToggle();
+    
     // Setup pagination button handlers
     const prevPageBtn = document.getElementById('prevPageBtn');
     const nextPageBtn = document.getElementById('nextPageBtn');
@@ -405,6 +408,44 @@ function setupUploadHandlers() {
     });
 }
 
+// Setup feature type toggle (Enhancement vs Night Conversion)
+function setupFeatureTypeToggle() {
+    const featureTypeRadios = document.querySelectorAll('input[name="feature_type"]');
+    const enhancementSettings = document.getElementById('enhancementSettings');
+    const detailLevelSettings = document.getElementById('detailLevelSettings');
+    const featureHint = document.getElementById('featureHint');
+    
+    if (!featureTypeRadios.length) return;
+    
+    function updateFeatureUI() {
+        const selectedFeature = document.querySelector('input[name="feature_type"]:checked')?.value || 'enhancement';
+        
+        if (selectedFeature === 'night_conversion') {
+            // Hide enhancement-specific settings
+            if (enhancementSettings) enhancementSettings.style.display = 'none';
+            if (detailLevelSettings) detailLevelSettings.style.display = 'none';
+            if (featureHint) {
+                featureHint.textContent = 'Convert your day photos into beautiful night photos with lights turned on';
+            }
+        } else {
+            // Show enhancement settings
+            if (enhancementSettings) enhancementSettings.style.display = 'block';
+            if (detailLevelSettings) detailLevelSettings.style.display = 'block';
+            if (featureHint) {
+                featureHint.textContent = 'Enhance your photos for better Airbnb and Booking.com listings';
+            }
+        }
+    }
+    
+    // Add event listeners
+    featureTypeRadios.forEach(radio => {
+        radio.addEventListener('change', updateFeatureUI);
+    });
+    
+    // Initialize UI
+    updateFeatureUI();
+}
+
 async function handleFiles(files) {
     // Reset UI
     enhancedImages = [];
@@ -424,19 +465,31 @@ async function handleFiles(files) {
         try {
             updateProgress(progressItem, 'Uploading...', 20);
             
-            // Get enhancement settings
-            const changeIntensity = document.querySelector('input[name="change_intensity"]:checked')?.value || 'moderate';
-            const detailLevel = document.querySelector('input[name="detail_level"]:checked')?.value || 'moderate';
+            // Get feature type
+            const featureType = document.querySelector('input[name="feature_type"]:checked')?.value || 'enhancement';
             
             // Upload and process the image
             const formData = new FormData();
             formData.append('image', file);
-            formData.append('change_intensity', changeIntensity);
-            formData.append('detail_level', detailLevel);
             
-            updateProgress(progressItem, 'Analyzing with AI...', 40);
+            // Determine which endpoint to use
+            let endpoint = '/api/enhance';
+            let processingMessage = 'Analyzing with AI...';
             
-            const response = await fetch('/api/enhance', {
+            if (featureType === 'night_conversion') {
+                endpoint = '/api/convert-to-night';
+                processingMessage = 'Converting to night...';
+            } else {
+                // Get enhancement settings only for enhancement feature
+                const changeIntensity = document.querySelector('input[name="change_intensity"]:checked')?.value || 'moderate';
+                const detailLevel = document.querySelector('input[name="detail_level"]:checked')?.value || 'moderate';
+                formData.append('change_intensity', changeIntensity);
+                formData.append('detail_level', detailLevel);
+            }
+            
+            updateProgress(progressItem, processingMessage, 40);
+            
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 body: formData
             });
@@ -446,7 +499,9 @@ async function handleFiles(files) {
                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
 
-            updateProgress(progressItem, 'Enhancing image...', 70);
+            // Update processing message for the final step
+            processingMessage = featureType === 'night_conversion' ? 'Converting to night...' : 'Enhancing image...';
+            updateProgress(progressItem, processingMessage, 70);
             
             const result = await response.json();
             
@@ -461,7 +516,8 @@ async function handleFiles(files) {
                 originalName: file.name,
                 enhancedUrl: result.enhanced_image_url,
                 originalUrl: result.original_image_url,
-                enhancements: result.enhancements
+                enhancements: result.enhancements,
+                conversionType: result.conversion_type || 'enhancement' // Track conversion type
             });
 
             // Update stats
@@ -542,9 +598,9 @@ function displayResults() {
                     </div>
                 </div>
                 <div class="comparison-side">
-                    <div class="comparison-label-small">After</div>
+                    <div class="comparison-label-small">${image.conversionType === 'night_conversion' ? 'Night' : 'After'}</div>
                     <div class="result-image-container">
-                        <img src="${image.enhancedUrl}" alt="Enhanced" class="result-image" loading="lazy">
+                        <img src="${image.enhancedUrl}" alt="${image.conversionType === 'night_conversion' ? 'Night-converted property photo with lights on' : 'Enhanced'}" class="result-image" loading="lazy">
                     </div>
                 </div>
             </div>
