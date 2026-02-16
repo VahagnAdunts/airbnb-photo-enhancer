@@ -317,47 +317,58 @@ function setupUploadHandlers() {
         return;
     }
     
-    // Remove existing listeners by cloning and replacing elements
-    const newUploadArea = uploadAreaEl.cloneNode(true);
-    uploadAreaEl.parentNode.replaceChild(newUploadArea, uploadAreaEl);
+    // Remove any existing listeners by cloning (to avoid duplicates)
+    // But keep a reference to the actual elements in the DOM
+    const existingUploadArea = uploadAreaEl;
+    const existingFileInput = fileInputEl;
     
-    const newFileInput = fileInputEl.cloneNode(true);
-    fileInputEl.parentNode.replaceChild(newFileInput, fileInputEl);
+    // Clone to remove old listeners
+    const newUploadArea = existingUploadArea.cloneNode(true);
+    existingUploadArea.parentNode.replaceChild(newUploadArea, existingUploadArea);
     
-    // Upload area click handler - use the new file input directly
-    newUploadArea.addEventListener('click', function(e) {
+    const newFileInput = existingFileInput.cloneNode(true);
+    existingFileInput.parentNode.replaceChild(newFileInput, existingFileInput);
+    
+    // Now get fresh references to the newly inserted elements
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    
+    if (!uploadArea || !fileInput) {
+        console.error('Failed to get upload elements after cloning');
+        return;
+    }
+    
+    // Upload area click handler
+    uploadArea.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        // Use the newFileInput we just created
-        if (newFileInput) {
-            newFileInput.click();
-        }
+        fileInput.click();
     });
 
     // File input change handler
-    newFileInput.addEventListener('change', function(e) {
+    fileInput.addEventListener('change', function(e) {
         if (e.target.files && e.target.files.length > 0) {
             handleFiles(Array.from(e.target.files));
         }
     });
 
     // Drag and drop handlers
-    newUploadArea.addEventListener('dragover', function(e) {
+    uploadArea.addEventListener('dragover', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        newUploadArea.classList.add('dragover');
+        uploadArea.classList.add('dragover');
     });
 
-    newUploadArea.addEventListener('dragleave', function(e) {
+    uploadArea.addEventListener('dragleave', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        newUploadArea.classList.remove('dragover');
+        uploadArea.classList.remove('dragover');
     });
 
-    newUploadArea.addEventListener('drop', function(e) {
+    uploadArea.addEventListener('drop', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        newUploadArea.classList.remove('dragover');
+        uploadArea.classList.remove('dragover');
         const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
         if (files.length > 0) {
             handleFiles(files);
@@ -470,7 +481,8 @@ async function handleFiles(files) {
                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
 
-            const processingMessage = featureType === 'night_conversion' ? 'Converting to night...' : 'Enhancing image...';
+            // Update processing message for the final step
+            processingMessage = featureType === 'night_conversion' ? 'Converting to night...' : 'Enhancing image...';
             updateProgress(progressItem, processingMessage, 70);
             
             const result = await response.json();
