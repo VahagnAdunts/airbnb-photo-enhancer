@@ -268,9 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check again after a short delay (to catch redirects after login)
     setTimeout(() => {
-        // Re-initialize upload handlers in case DOM changed
-        setupUploadHandlers();
-        
         if (enhancedImages.length > 0) {
             checkAuthStatus();
         }
@@ -279,9 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check auth status when page becomes visible (user returns after login)
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
-            // Re-initialize upload handlers when page becomes visible
-            setupUploadHandlers();
-            
             if (enhancedImages.length > 0) {
             setTimeout(() => checkAuthStatus(), 100);
             }
@@ -290,9 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Also check on window focus (when user returns to tab)
     window.addEventListener('focus', () => {
-        // Re-initialize upload handlers on focus
-        setupUploadHandlers();
-        
         if (enhancedImages.length > 0) {
             setTimeout(() => checkAuthStatus(), 100);
         }
@@ -307,6 +298,9 @@ function scrollToUpload() {
     }
 }
 
+// Track if handlers are already set up to avoid duplicates
+let uploadHandlersSetup = false;
+
 // Initialize upload handlers
 function setupUploadHandlers() {
     const uploadAreaEl = document.getElementById('uploadArea');
@@ -317,64 +311,62 @@ function setupUploadHandlers() {
         return;
     }
     
-    // Remove any existing listeners by cloning (to avoid duplicates)
-    // But keep a reference to the actual elements in the DOM
-    const existingUploadArea = uploadAreaEl;
-    const existingFileInput = fileInputEl;
-    
-    // Clone to remove old listeners
-    const newUploadArea = existingUploadArea.cloneNode(true);
-    existingUploadArea.parentNode.replaceChild(newUploadArea, existingUploadArea);
-    
-    const newFileInput = existingFileInput.cloneNode(true);
-    existingFileInput.parentNode.replaceChild(newFileInput, existingFileInput);
-    
-    // Now get fresh references to the newly inserted elements
-    const uploadArea = document.getElementById('uploadArea');
-    const fileInput = document.getElementById('fileInput');
-    
-    if (!uploadArea || !fileInput) {
-        console.error('Failed to get upload elements after cloning');
+    // If handlers are already set up, don't set them up again
+    // (unless we explicitly want to reset them)
+    if (uploadHandlersSetup) {
+        console.log('Upload handlers already set up, skipping...');
         return;
     }
     
     // Upload area click handler
-    uploadArea.addEventListener('click', function(e) {
+    uploadAreaEl.addEventListener('click', function(e) {
+        // Don't prevent default if clicking directly on the file input
+        if (e.target === fileInputEl || e.target.closest('#fileInput')) {
+            return;
+        }
         e.preventDefault();
         e.stopPropagation();
-        fileInput.click();
+        console.log('Upload area clicked, triggering file input');
+        // Use the fileInputEl we already have
+        if (fileInputEl) {
+            fileInputEl.click();
+        } else {
+            console.error('File input not found when trying to click');
+        }
     });
 
     // File input change handler
-    fileInput.addEventListener('change', function(e) {
+    fileInputEl.addEventListener('change', function(e) {
+        console.log('File input changed', e.target.files);
         if (e.target.files && e.target.files.length > 0) {
             handleFiles(Array.from(e.target.files));
         }
     });
 
     // Drag and drop handlers
-    uploadArea.addEventListener('dragover', function(e) {
+    uploadAreaEl.addEventListener('dragover', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        uploadArea.classList.add('dragover');
+        uploadAreaEl.classList.add('dragover');
     });
 
-    uploadArea.addEventListener('dragleave', function(e) {
+    uploadAreaEl.addEventListener('dragleave', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        uploadArea.classList.remove('dragover');
+        uploadAreaEl.classList.remove('dragover');
     });
 
-    uploadArea.addEventListener('drop', function(e) {
+    uploadAreaEl.addEventListener('drop', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        uploadArea.classList.remove('dragover');
+        uploadAreaEl.classList.remove('dragover');
         const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
         if (files.length > 0) {
             handleFiles(files);
         }
     });
     
+    uploadHandlersSetup = true;
     console.log('Upload handlers initialized successfully');
 }
 
@@ -405,11 +397,7 @@ function setupFeatureTypeToggle() {
                 featureHint.textContent = 'Enhance your photos for better Airbnb and Booking.com listings';
             }
         }
-        
-        // Re-initialize upload handlers after UI update to ensure they work
-        setTimeout(() => {
-            setupUploadHandlers();
-        }, 100);
+        // Don't re-initialize upload handlers here - they should already be set up
     }
     
     // Add event listeners
