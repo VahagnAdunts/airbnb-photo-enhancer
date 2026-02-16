@@ -1286,9 +1286,10 @@ body {
 }
 
 .tips-section {
-    padding: 1.5rem 0;
+    padding: 3rem 0;
     background: var(--bg-primary);
-    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    margin-top: 3rem;
 }
 
 .tips-section .container {
