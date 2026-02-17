@@ -742,15 +742,19 @@ function updateSelectionUI() {
 function updateDownloadButton() {
     if (downloadAllBtn) {
         const selectedCount = enhancedImages.filter(img => img.selected).length;
-        const totalPrice = (selectedCount * 0.55).toFixed(2);
+        const downloadCountSpan = document.getElementById('downloadCount');
         
+        // Update the count span
+        if (downloadCountSpan) {
+            downloadCountSpan.textContent = selectedCount;
+        }
+        
+        // Update button state
         if (selectedCount === 0) {
-            downloadAllBtn.textContent = 'Download Selected (0)';
             downloadAllBtn.disabled = true;
             downloadAllBtn.style.opacity = '0.5';
             downloadAllBtn.style.cursor = 'not-allowed';
         } else {
-            downloadAllBtn.textContent = `Download ${selectedCount} Photo${selectedCount > 1 ? 's' : ''} - $${totalPrice}`;
             downloadAllBtn.disabled = false;
             downloadAllBtn.style.opacity = '1';
             downloadAllBtn.style.cursor = 'pointer';
@@ -849,7 +853,16 @@ async function initiatePayment(photoIds) {
         // Show loading state
         if (downloadAllBtn) {
             downloadAllBtn.disabled = true;
-            downloadAllBtn.textContent = 'Processing...';
+            const svg = downloadAllBtn.querySelector('svg');
+            const downloadCountSpan = document.getElementById('downloadCount');
+            // Store original content for restoration
+            if (!downloadAllBtn.dataset.originalContent) {
+                downloadAllBtn.dataset.originalContent = downloadAllBtn.innerHTML;
+            }
+            // Update to show processing state
+            downloadAllBtn.innerHTML = '';
+            if (svg) downloadAllBtn.appendChild(svg.cloneNode(true));
+            downloadAllBtn.appendChild(document.createTextNode(' Processing...'));
         }
         
         const response = await fetch('/api/payment/create-checkout-session', {
@@ -868,6 +881,11 @@ async function initiatePayment(photoIds) {
             } else {
                 alert('Error: Payment session URL not received');
                 if (downloadAllBtn) {
+                    // Restore original content
+                    if (downloadAllBtn.dataset.originalContent) {
+                        downloadAllBtn.innerHTML = downloadAllBtn.dataset.originalContent;
+                        delete downloadAllBtn.dataset.originalContent;
+                    }
                     downloadAllBtn.disabled = false;
                     updateDownloadButton();
                 }
@@ -876,6 +894,11 @@ async function initiatePayment(photoIds) {
             const error = await response.json();
             alert(`Payment error: ${error.error || 'Unknown error'}`);
             if (downloadAllBtn) {
+                // Restore original content
+                if (downloadAllBtn.dataset.originalContent) {
+                    downloadAllBtn.innerHTML = downloadAllBtn.dataset.originalContent;
+                    delete downloadAllBtn.dataset.originalContent;
+                }
                 downloadAllBtn.disabled = false;
                 updateDownloadButton();
             }
@@ -884,6 +907,11 @@ async function initiatePayment(photoIds) {
         console.error('Error initiating payment:', error);
         alert('An error occurred while initiating payment. Please try again.');
         if (downloadAllBtn) {
+            // Restore original content
+            if (downloadAllBtn.dataset.originalContent) {
+                downloadAllBtn.innerHTML = downloadAllBtn.dataset.originalContent;
+                delete downloadAllBtn.dataset.originalContent;
+            }
             downloadAllBtn.disabled = false;
             updateDownloadButton();
         }
