@@ -698,7 +698,9 @@ def google_callback():
 
 @app.route('/')
 def index():
-    # Allow authenticated users to access home page (they might have pending images)
+    # Redirect authenticated users to dashboard
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
     return render_template('home.html')
 
 @app.route('/api/check-auth')
