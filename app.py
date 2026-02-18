@@ -11,7 +11,6 @@ import re
 import time
 from datetime import datetime
 from io import BytesIO
-from PIL import Image
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from image_enhancer import ImageEnhancer
