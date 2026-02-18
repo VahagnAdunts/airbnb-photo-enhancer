@@ -415,6 +415,26 @@ if (uploadArea && fileInput) {
 }
 
 async function handleFiles(files) {
+    // Check authentication status first
+    let isAuthenticated = false;
+    try {
+        const authResponse = await fetch('/api/check-auth');
+        if (authResponse.ok) {
+            const authData = await authResponse.json();
+            isAuthenticated = authData.authenticated || false;
+        }
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+        // Default to not authenticated if check fails
+        isAuthenticated = false;
+    }
+
+    // If user is not signed in and uploaded more than 5 photos, limit to first 5
+    if (!isAuthenticated && files.length > 5) {
+        alert(`For trial users, we allow only 5 photos at once. We'll process the first 5 photos you selected. Sign up to enhance unlimited photos!`);
+        files = files.slice(0, 5);
+    }
+
     // Reset UI
     enhancedImages = [];
     requiresLogin = false;
