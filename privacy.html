@@ -29,6 +29,7 @@
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','{{ gtm_container_id }}');</script>
     <!-- End Google Tag Manager -->
+    {% endif %}
 </head>
 <body>
     {% if gtm_container_id %}
@@ -36,6 +37,7 @@
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
+    {% endif %}
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-brand">
@@ -214,6 +216,7 @@
     </footer>
     {% if gtm_container_id %}
     <script src="static/js/analytics.js"></script>
+    {% endif %}
 </body>
 </html>
 
