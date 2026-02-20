@@ -179,6 +179,9 @@ if database_url.startswith('postgresql://'):
 # Google Tag Manager Configuration
 app.config['GTM_CONTAINER_ID'] = os.getenv('GTM_CONTAINER_ID', '')
 
+# Google Analytics 4 Configuration
+app.config['GA4_MEASUREMENT_ID'] = os.getenv('GA4_MEASUREMENT_ID', '')
+
 # Stripe Configuration
 app.config['STRIPE_PUBLISHABLE_KEY'] = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
 app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY', '')
@@ -224,10 +227,13 @@ PHOTO_PRICE_CENTS = 90
 
 CORS(app)
 
-# Make GTM_CONTAINER_ID available to all templates
+# Make GTM_CONTAINER_ID and GA4_MEASUREMENT_ID available to all templates
 @app.context_processor
 def inject_gtm_container_id():
-    return dict(gtm_container_id=app.config['GTM_CONTAINER_ID'])
+    return dict(
+        gtm_container_id=app.config['GTM_CONTAINER_ID'],
+        ga4_measurement_id=app.config['GA4_MEASUREMENT_ID']
+    )
 
 # Initialize extensions
 db.init_app(app)
