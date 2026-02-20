@@ -888,6 +888,206 @@ body {
     border-top: 1px solid var(--border);
 }
 
+/* New Main Pricing Card Styles */
+.main-pricing-card {
+    background: var(--bg-primary);
+    border: 2px solid var(--text-primary);
+    border-radius: var(--radius);
+    padding: 4rem 3rem;
+    margin: 3rem auto;
+    max-width: 800px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.main-pricing-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.main-price-display {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.main-price-amount {
+    font-size: 5rem;
+    font-weight: 300;
+    color: var(--text-primary);
+    letter-spacing: -3px;
+    line-height: 1;
+}
+
+.main-price-unit {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.main-pricing-description {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: 2.5rem;
+    max-width: 600px;
+}
+
+.pricing-features-inline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    width: 100%;
+    max-width: 700px;
+    margin-bottom: 2.5rem;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+}
+
+.feature-icon {
+    color: #10b981;
+    font-weight: 600;
+    font-size: 1.125rem;
+}
+
+.pricing-action-main {
+    margin-top: 1rem;
+}
+
+.pricing-trial-note {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Pricing Examples */
+.pricing-examples {
+    margin: 4rem auto;
+    max-width: 800px;
+    text-align: center;
+}
+
+.examples-title {
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    letter-spacing: -0.5px;
+}
+
+.examples-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+}
+
+.example-item {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.example-count {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.example-price {
+    font-size: 1.75rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    letter-spacing: -1px;
+}
+
+/* Bulk Pricing Section */
+.bulk-pricing-section {
+    margin: 5rem auto 3rem;
+    padding: 3rem 2.5rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: var(--radius);
+    text-align: center;
+    max-width: 800px;
+    border: 1px solid var(--border);
+}
+
+.bulk-pricing-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.bulk-pricing-title {
+    font-size: 2rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    letter-spacing: -1px;
+}
+
+.bulk-pricing-description {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.bulk-pricing-subtext {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media (max-width: 768px) {
+    .main-pricing-card {
+        padding: 3rem 2rem;
+    }
+    
+    .main-price-amount {
+        font-size: 4rem;
+    }
+    
+    .main-price-unit {
+        font-size: 1.25rem;
+    }
+    
+    .pricing-features-inline {
+        grid-template-columns: 1fr;
+    }
+    
+    .examples-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .bulk-pricing-section {
+        padding: 2.5rem 2rem;
+    }
+    
+    .bulk-pricing-title {
+        font-size: 1.75rem;
+    }
+}
+
 .home-footer {
     padding: 4rem 2rem 2rem;
     border-top: 1px solid var(--border);
