@@ -43,7 +43,7 @@ function updateDownloadSection(isAuthenticated) {
         // Check if images have IDs (saved photos require payment)
         const hasSavedPhotos = enhancedImages.some(img => img.id !== undefined && img.id !== null);
         if (hasSavedPhotos) {
-            const totalPrice = (enhancedImages.length * 0.55).toFixed(2);
+            const totalPrice = (enhancedImages.length * 0.9).toFixed(2);
             message.textContent = `You've enhanced ${enhancedImages.length} photo${enhancedImages.length > 1 ? 's' : ''}. Payment required: $${totalPrice}`;
         } else {
         message.textContent = `You've enhanced ${enhancedImages.length} photo${enhancedImages.length > 1 ? 's' : ''}. Ready to download!`;
@@ -61,7 +61,7 @@ function updateDownloadSection(isAuthenticated) {
         
         // Use the same hasSavedPhotos variable (already checked above)
         if (hasSavedPhotos) {
-            const totalPrice = (enhancedImages.length * 0.55).toFixed(2);
+            const totalPrice = (enhancedImages.length * 0.9).toFixed(2);
             downloadBtn.textContent = `Download All ${enhancedImages.length} Photo${enhancedImages.length > 1 ? 's' : ''} - $${totalPrice}`;
         } else {
         downloadBtn.textContent = `Download All ${enhancedImages.length} Photo${enhancedImages.length > 1 ? 's' : ''}`;

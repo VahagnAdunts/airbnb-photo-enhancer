@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class ImageEnhancer:
-    """Simple image enhancer using Gemini."""
+    """Simple image enhancer using AI."""
     
     def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
@@ -20,7 +20,7 @@ class ImageEnhancer:
         self.model_name = "gemini-3-pro-image-preview"
     
     def enhance_image(self, image_path: str, filename: str, change_intensity: str = "moderate", detail_level: str = "moderate") -> Tuple[str, Dict]:
-        """Enhance image using Gemini.
+        """Enhance image using AI.
         
         Args:
             image_path: Path to the image file
@@ -42,8 +42,8 @@ class ImageEnhancer:
         # Build prompt based on user preferences
         prompt = self._build_enhancement_prompt(change_intensity, detail_level)
         
-        # Send to Gemini
-        logger.info(f"Sending image to Gemini: {filename}")
+        # Send to AI service
+        logger.info(f"Sending image for processing: {filename}")
         logger.info(f"Enhancement settings: change_intensity={change_intensity}, detail_level={detail_level}")
         try:
             image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
@@ -64,16 +64,16 @@ class ImageEnhancer:
             if hasattr(response, 'parts'):
                 for part in response.parts:
                     if hasattr(part, 'inline_data') and part.inline_data:
-                        # Gemini returned an enhanced image
-                        logger.info("Gemini returned enhanced image data")
+                        # AI service returned an enhanced image
+                        logger.info("AI service returned enhanced image data")
                         try:
                             image_data = part.inline_data.data
                             enhanced_image = Image.open(BytesIO(image_data))
                             if enhanced_image.mode != 'RGB':
                                 enhanced_image = enhanced_image.convert('RGB')
-                            reason = "Gemini returned enhanced image"
+                            reason = "AI service returned enhanced image"
                         except Exception as e:
-                            reason = f"Gemini returned image data but failed to process: {str(e)}"
+                            reason = f"AI service returned image data but failed to process: {str(e)}"
                     elif hasattr(part, 'text') and part.text:
                         response_text += part.text
             elif hasattr(response, 'text'):
@@ -82,25 +82,25 @@ class ImageEnhancer:
             # Determine reason if no image returned
             if not enhanced_image:
                 if response_text:
-                    reason = f"Gemini returned text response instead of image: {response_text[:100]}"
+                    reason = f"AI service returned text response instead of image: {response_text[:100]}"
                 else:
-                    reason = "Gemini returned empty response - model may not support image generation/enhancement"
+                    reason = "AI service returned empty response - model may not support image generation/enhancement"
             
-            logger.info(f"Gemini response: {response_text if response_text else '(no text response)'}")
+            logger.info(f"AI service response: {response_text if response_text else '(no text response)'}")
             logger.info(f"Reason: {reason}")
         except Exception as e:
-            logger.error(f"Error calling Gemini: {e}", exc_info=True)
+            logger.error(f"Error calling AI service: {e}", exc_info=True)
             response_text = f"Error: {str(e)}"
             enhanced_image = None
-            reason = f"Error calling Gemini API: {str(e)}"
+            reason = f"Error calling AI API: {str(e)}"
         
-        # Use Gemini's enhanced image if available, otherwise return original with reason
+        # Use AI service's enhanced image if available, otherwise return original with reason
         if enhanced_image:
             final_image = enhanced_image
-            logger.info("Using Gemini's enhanced image")
+            logger.info("Using AI service's enhanced image")
         else:
             final_image = image
-            logger.warning(f"No enhanced image from Gemini. Reason: {reason}")
+            logger.warning(f"No enhanced image from AI service. Reason: {reason}")
         
         # Save image
         enhanced_filename = f"enhanced_{filename.rsplit('.', 1)[0]}.jpg"
@@ -109,14 +109,14 @@ class ImageEnhancer:
         
         return enhanced_path, {
             "response": response_text,
-            "enhanced_by_gemini": enhanced_image is not None,
-            "reason": reason if not enhanced_image else "Successfully enhanced by Gemini",
+            "enhanced_by_ai": enhanced_image is not None,
+            "reason": reason if not enhanced_image else "Successfully enhanced by AI",
             "change_intensity": change_intensity,
             "detail_level": detail_level
         }
     
     def convert_to_night(self, image_path: str, filename: str) -> Tuple[str, Dict]:
-        """Convert a day photo to a night photo using Gemini.
+        """Convert a day photo to a night photo using AI.
         
         Args:
             image_path: Path to the image file
@@ -136,7 +136,7 @@ class ImageEnhancer:
         # Build night conversion prompt
         prompt = self._build_night_conversion_prompt()
         
-        # Send to Gemini
+        # Send to AI service
         logger.info(f"Converting image to night: {filename}")
         try:
             image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
@@ -157,16 +157,16 @@ class ImageEnhancer:
             if hasattr(response, 'parts'):
                 for part in response.parts:
                     if hasattr(part, 'inline_data') and part.inline_data:
-                        # Gemini returned a converted image
-                        logger.info("Gemini returned night-converted image data")
+                        # AI service returned a converted image
+                        logger.info("AI service returned night-converted image data")
                         try:
                             image_data = part.inline_data.data
                             converted_image = Image.open(BytesIO(image_data))
                             if converted_image.mode != 'RGB':
                                 converted_image = converted_image.convert('RGB')
-                            reason = "Gemini returned night-converted image"
+                            reason = "AI service returned night-converted image"
                         except Exception as e:
-                            reason = f"Gemini returned image data but failed to process: {str(e)}"
+                            reason = f"AI service returned image data but failed to process: {str(e)}"
                     elif hasattr(part, 'text') and part.text:
                         response_text += part.text
             elif hasattr(response, 'text'):
@@ -175,25 +175,25 @@ class ImageEnhancer:
             # Determine reason if no image returned
             if not converted_image:
                 if response_text:
-                    reason = f"Gemini returned text response instead of image: {response_text[:100]}"
+                    reason = f"AI service returned text response instead of image: {response_text[:100]}"
                 else:
-                    reason = "Gemini returned empty response - model may not support image generation/enhancement"
+                    reason = "AI service returned empty response - model may not support image generation/enhancement"
             
-            logger.info(f"Gemini response: {response_text if response_text else '(no text response)'}")
+            logger.info(f"AI service response: {response_text if response_text else '(no text response)'}")
             logger.info(f"Reason: {reason}")
         except Exception as e:
-            logger.error(f"Error calling Gemini: {e}", exc_info=True)
+            logger.error(f"Error calling AI service: {e}", exc_info=True)
             response_text = f"Error: {str(e)}"
             converted_image = None
-            reason = f"Error calling Gemini API: {str(e)}"
+            reason = f"Error calling AI API: {str(e)}"
         
-        # Use Gemini's converted image if available, otherwise return original with reason
+        # Use AI service's converted image if available, otherwise return original with reason
         if converted_image:
             final_image = converted_image
-            logger.info("Using Gemini's night-converted image")
+            logger.info("Using AI service's night-converted image")
         else:
             final_image = image
-            logger.warning(f"No night-converted image from Gemini. Reason: {reason}")
+            logger.warning(f"No night-converted image from AI service. Reason: {reason}")
         
         # Save image
         night_filename = f"night_{filename.rsplit('.', 1)[0]}.jpg"
@@ -202,8 +202,8 @@ class ImageEnhancer:
         
         return night_path, {
             "response": response_text,
-            "converted_by_gemini": converted_image is not None,
-            "reason": reason if not converted_image else "Successfully converted to night by Gemini",
+            "converted_by_ai": converted_image is not None,
+            "reason": reason if not converted_image else "Successfully converted to night by AI",
             "conversion_type": "night_conversion"
         }
     

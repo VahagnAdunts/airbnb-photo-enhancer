@@ -48,7 +48,7 @@ class EnhancedImage(db.Model):
     change_intensity = db.Column(db.String(20), default='moderate')  # minimal, moderate, extensive
     detail_level = db.Column(db.String(20), default='moderate')  # minimal, moderate, extensive
     enhancement_settings = db.Column(db.Text)  # JSON string of enhancement details
-    ai_analysis = db.Column(db.Text)  # AI analysis/response from Gemini
+    ai_analysis = db.Column(db.Text)  # AI analysis/response from AI service
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

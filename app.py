@@ -219,8 +219,8 @@ else:
     logger.warning("STRIPE_SECRET_KEY not set - payment features will not work")
     app.config['STRIPE_SECRET_KEY'] = ''
 
-# Price per photo in cents ($0.55 = 55 cents)
-PHOTO_PRICE_CENTS = 55
+# Price per photo in cents ($0.9 = 90 cents)
+PHOTO_PRICE_CENTS = 90
 
 CORS(app)
 
