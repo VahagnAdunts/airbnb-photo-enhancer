@@ -180,7 +180,8 @@ if database_url.startswith('postgresql://'):
 app.config['GTM_CONTAINER_ID'] = os.getenv('GTM_CONTAINER_ID', '')
 
 # Google Analytics 4 Configuration
-app.config['GA4_MEASUREMENT_ID'] = os.getenv('GA4_MEASUREMENT_ID', '')
+# Always use the Measurement ID (can be overridden by env var)
+app.config['GA4_MEASUREMENT_ID'] = os.getenv('GA4_MEASUREMENT_ID', 'G-QWRC0ENT56')
 
 # Stripe Configuration
 app.config['STRIPE_PUBLISHABLE_KEY'] = os.getenv('STRIPE_PUBLISHABLE_KEY', '')

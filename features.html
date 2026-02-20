@@ -35,16 +35,14 @@
     
     <link rel="stylesheet" href="static/css/style.css">
     
-    {% if ga4_measurement_id %}
-    <!-- Google Analytics 4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga4_measurement_id }}"></script>
+    <!-- Google Analytics 4 - Direct tracking -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QWRC0ENT56"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', '{{ ga4_measurement_id }}');
+        gtag('config', 'G-QWRC0ENT56');
     </script>
-    {% endif %}
     {% if gtm_container_id %}
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -53,7 +51,6 @@
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','{{ gtm_container_id }}');</script>
     <!-- End Google Tag Manager -->
-    {% endif %}
 </head>
 <body class="home-page">
     {% if gtm_container_id %}
@@ -61,7 +58,6 @@
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
-    {% endif %}
     <nav class="navbar navbar-minimal">
         <div class="nav-container">
             <div class="nav-brand">
@@ -359,7 +355,6 @@
     </footer>
     {% if gtm_container_id %}
     <script src="static/js/analytics.js"></script>
-    {% endif %}
 </body>
 </html>
 
