@@ -323,6 +323,19 @@ with app.app_context():
             from sqlalchemy import inspect, text
             inspector = inspect(db.engine)
             
+            # Check if user table exists and add is_admin column if needed
+            if 'user' in inspector.get_table_names():
+                user_columns = [col['name'] for col in inspector.get_columns('user')]
+                if 'is_admin' not in user_columns:
+                    logger.info("Adding is_admin column to user table...")
+                    with db.engine.connect() as conn:
+                        if db_uri.startswith('sqlite'):
+                            conn.execute(text('ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0'))
+                        else:
+                            conn.execute(text('ALTER TABLE "user" ADD COLUMN is_admin BOOLEAN DEFAULT FALSE'))
+                        conn.commit()
+                    logger.info("Added is_admin column to user table")
+            
             # Check if enhanced_image table exists
             if 'enhanced_image' in inspector.get_table_names():
                 columns = [col['name'] for col in inspector.get_columns('enhanced_image')]
@@ -368,6 +381,18 @@ with app.app_context():
                             conn.execute(text('ALTER TABLE "user" ADD COLUMN has_free_access BOOLEAN DEFAULT FALSE'))
                         conn.commit()
                     logger.info("Added has_free_access column")
+                
+                if 'is_admin' not in columns:
+                    logger.info("Adding is_admin column to user table...")
+                    with db.engine.connect() as conn:
+                        # For SQLite
+                        if db_uri.startswith('sqlite'):
+                            conn.execute(text('ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0'))
+                        # For PostgreSQL
+                        else:
+                            conn.execute(text('ALTER TABLE "user" ADD COLUMN is_admin BOOLEAN DEFAULT FALSE'))
+                        conn.commit()
+                    logger.info("Added is_admin column to user table")
         except Exception as migration_error:
             # Columns might already exist or table might not exist yet - that's okay
             logger.warning(f"Migration check: {migration_error} (columns may already exist or table not created yet)")
@@ -1971,6 +1996,90 @@ def set_free_access():
         logger.error(f"Error setting free access: {e}", exc_info=True)
         db.session.rollback()
         return jsonify({'error': 'An error occurred'}), 500
+
+# Helper function to check if user is admin
+def is_admin_user(user):
+    """Check if a user has admin privileges.
+    Admin status can be set via:
+    1. is_admin flag in database
+    2. ADMIN_EMAILS environment variable (comma-separated list)
+    """
+    if not user or not user.is_authenticated:
+        return False
+    
+    # Check database flag
+    if user.is_admin:
+        return True
+    
+    # Check ADMIN_EMAILS environment variable
+    admin_emails = os.getenv('ADMIN_EMAILS', '')
+    if admin_emails:
+        admin_email_list = [email.strip().lower() for email in admin_emails.split(',')]
+        if user.email.lower() in admin_email_list:
+            return True
+    
+    return False
+
+# Admin dashboard route
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    """Admin dashboard to view all registered users. Requires admin privileges."""
+    # Check if user is admin
+    if not is_admin_user(current_user):
+        logger.warning(f"Unauthorized admin access attempt by user {current_user.id} ({current_user.email})")
+        return render_template('error.html', 
+                             error_code=403,
+                             error_message="Access Denied",
+                             error_description="You don't have permission to access this page."), 403
+    
+    try:
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 50  # Users per page
+        search_query = request.args.get('search', '').strip()
+        
+        # Build query
+        query = User.query
+        
+        # Apply search filter if provided
+        if search_query:
+            from sqlalchemy import or_, func
+            search_filter = or_(
+                func.lower(User.username).like(f'%{search_query.lower()}%'),
+                func.lower(User.email).like(f'%{search_query.lower()}%')
+            )
+            query = query.filter(search_filter)
+        
+        # Order by creation date (newest first)
+        query = query.order_by(User.created_at.desc())
+        
+        # Paginate
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        users = pagination.items
+        
+        # Calculate statistics
+        total_users = User.query.count()
+        email_users = User.query.filter(User.google_id.is_(None)).count()
+        google_users = User.query.filter(User.google_id.is_not(None)).count()
+        free_access_users = User.query.filter_by(has_free_access=True).count()
+        total_photos = db.session.query(db.func.sum(User.images_processed)).scalar() or 0
+        
+        return render_template('admin.html',
+                             users=users,
+                             pagination=pagination,
+                             search_query=search_query,
+                             stats={
+                                 'total_users': total_users,
+                                 'email_users': email_users,
+                                 'google_users': google_users,
+                                 'free_access_users': free_access_users,
+                                 'total_photos': total_photos
+                             })
+    except Exception as e:
+        logger.error(f"Error loading admin dashboard: {e}", exc_info=True)
+        flash('An error occurred while loading the admin dashboard.', 'error')
+        return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     # Production: Use environment variable for port, default to 5000

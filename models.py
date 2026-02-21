@@ -15,6 +15,7 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     images_processed = db.Column(db.Integer, default=0)
     has_free_access = db.Column(db.Boolean, default=False, nullable=False)  # Allows free downloads without payment
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)  # Admin access flag
     
     # Relationship to enhanced images
     enhanced_images = db.relationship('EnhancedImage', backref='user', lazy=True, cascade='all, delete-orphan')
