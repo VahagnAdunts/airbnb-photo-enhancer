@@ -2065,6 +2065,42 @@ def admin_dashboard():
         free_access_users = User.query.filter_by(has_free_access=True).count()
         total_photos = db.session.query(db.func.sum(User.images_processed)).scalar() or 0
         
+        # Payment statistics
+        total_completed_payments = Payment.query.filter_by(status='completed').count()
+        total_revenue_cents = db.session.query(db.func.sum(Payment.amount)).filter(
+            Payment.status == 'completed'
+        ).scalar() or 0
+        total_revenue_dollars = total_revenue_cents / 100.0
+        
+        # Add payment info to each user
+        user_ids = [user.id for user in users]
+        payments_by_user = {}
+        if user_ids:
+            from sqlalchemy import func
+            payment_stats = db.session.query(
+                Payment.user_id,
+                func.count(Payment.id).label('payment_count'),
+                func.sum(Payment.amount).label('total_paid_cents')
+            ).filter(
+                Payment.user_id.in_(user_ids),
+                Payment.status == 'completed'
+            ).group_by(Payment.user_id).all()
+            
+            for user_id, payment_count, total_paid_cents in payment_stats:
+                payments_by_user[user_id] = {
+                    'count': payment_count,
+                    'total_cents': total_paid_cents or 0,
+                    'total_dollars': (total_paid_cents or 0) / 100.0
+                }
+        
+        # Attach payment info to users
+        for user in users:
+            user.payment_info = payments_by_user.get(user.id, {
+                'count': 0,
+                'total_cents': 0,
+                'total_dollars': 0.0
+            })
+        
         return render_template('admin.html',
                              users=users,
                              pagination=pagination,
@@ -2074,7 +2110,9 @@ def admin_dashboard():
                                  'email_users': email_users,
                                  'google_users': google_users,
                                  'free_access_users': free_access_users,
-                                 'total_photos': total_photos
+                                 'total_photos': total_photos,
+                                 'total_completed_payments': total_completed_payments,
+                                 'total_revenue_dollars': total_revenue_dollars
                              })
     except Exception as e:
         logger.error(f"Error loading admin dashboard: {e}", exc_info=True)

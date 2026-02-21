@@ -214,6 +214,14 @@
                 <div class="stat-label">Total Photos Processed</div>
                 <div class="stat-value">{{ stats.total_photos }}</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Revenue</div>
+                <div class="stat-value">${{ "%.2f"|format(stats.total_revenue_dollars) }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Completed Payments</div>
+                <div class="stat-value">{{ stats.total_completed_payments }}</div>
+            </div>
         </div>
 
         <!-- Search Bar -->
@@ -242,6 +250,8 @@
                         <th>Signup Method</th>
                         <th>Created At</th>
                         <th>Photos</th>
+                        <th>Payments</th>
+                        <th>Total Paid</th>
                         <th>Free Access</th>
                     </tr>
                 </thead>
@@ -262,6 +272,20 @@
                             <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A' }}</td>
                             <td>{{ user.images_processed }}</td>
                             <td>
+                                {% if user.payment_info.count > 0 %}
+                                    <span class="badge" style="background: #10b981; color: white;">{{ user.payment_info.count }}</span>
+                                {% else %}
+                                    <span style="color: var(--text-secondary);">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.payment_info.total_dollars > 0 %}
+                                    <strong style="color: #10b981;">${{ "%.2f"|format(user.payment_info.total_dollars) }}</strong>
+                                {% else %}
+                                    <span style="color: var(--text-secondary);">$0.00</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if user.has_free_access %}
                                     <span class="badge badge-free">Yes</span>
                                 {% else %}
@@ -272,7 +296,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                                 {% if search_query %}
                                     No users found matching "{{ search_query }}"
                                 {% else %}
