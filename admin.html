@@ -106,6 +106,16 @@
         .users-table tbody tr:hover {
             background: var(--bg-secondary);
         }
+        .users-table td a {
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        .users-table td a:hover {
+            color: #3b82f6;
+            text-decoration: underline;
+        }
         .badge {
             display: inline-block;
             padding: 0.25rem 0.75rem;
@@ -260,7 +270,7 @@
                         {% for user in users %}
                         <tr>
                             <td>{{ user.id }}</td>
-                            <td><strong>{{ user.username }}</strong></td>
+                            <td><strong><a href="{{ url_for('admin_user_photos', user_id=user.id) }}" style="color: var(--text-primary); text-decoration: none; font-weight: 500;">{{ user.username }}</a></strong></td>
                             <td>{{ user.email }}</td>
                             <td>
                                 {% if user.google_id %}

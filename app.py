@@ -1438,8 +1438,8 @@ def serve_original_photo(photo_id):
     try:
         photo = EnhancedImage.query.get_or_404(photo_id)
         
-        # Check if the photo belongs to the current user
-        if photo.user_id != current_user.id:
+        # Check if the photo belongs to the current user OR if user is admin
+        if photo.user_id != current_user.id and not is_admin_user(current_user):
             return jsonify({'error': 'Unauthorized'}), 403
         
         # Try to serve from file first (if it exists)
@@ -1473,8 +1473,8 @@ def serve_enhanced_photo(photo_id):
     try:
         photo = EnhancedImage.query.get_or_404(photo_id)
         
-        # Check if the photo belongs to the current user
-        if photo.user_id != current_user.id:
+        # Check if the photo belongs to the current user OR if user is admin
+        if photo.user_id != current_user.id and not is_admin_user(current_user):
             return jsonify({'error': 'Unauthorized'}), 403
         
         # Try to serve from file first (if it exists)
@@ -2118,6 +2118,51 @@ def admin_dashboard():
         logger.error(f"Error loading admin dashboard: {e}", exc_info=True)
         flash('An error occurred while loading the admin dashboard.', 'error')
         return redirect(url_for('dashboard'))
+
+@app.route('/admin/user/<int:user_id>')
+@login_required
+def admin_user_photos(user_id):
+    """Admin view to see a specific user's enhanced photos. Requires admin privileges."""
+    # Check if user is admin
+    if not is_admin_user(current_user):
+        logger.warning(f"Unauthorized admin access attempt by user {current_user.id} ({current_user.email})")
+        return render_template('error.html', 
+                             error_code=403,
+                             error_message="Access Denied",
+                             error_description="You don't have permission to access this page."), 403
+    
+    try:
+        # Get the user
+        user = User.query.get_or_404(user_id)
+        
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 20  # Photos per page
+        
+        # Query photos for this user
+        photos_query = EnhancedImage.query.filter_by(user_id=user_id)
+        photos_query = photos_query.order_by(EnhancedImage.created_at.desc())
+        
+        # Paginate
+        pagination = photos_query.paginate(page=page, per_page=per_page, error_out=False)
+        photos = pagination.items
+        
+        # Filter out photos that don't exist (file or database backup)
+        valid_photos = []
+        for photo in photos:
+            # Check if photo is accessible (file exists OR database has backup)
+            file_exists = os.path.exists(photo.enhanced_path) or photo.enhanced_image_data is not None
+            if file_exists:
+                valid_photos.append(photo)
+        
+        return render_template('admin_user_photos.html',
+                             user=user,
+                             photos=valid_photos,
+                             pagination=pagination)
+    except Exception as e:
+        logger.error(f"Error loading user photos for admin: {e}", exc_info=True)
+        flash('An error occurred while loading user photos.', 'error')
+        return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
     # Production: Use environment variable for port, default to 5000

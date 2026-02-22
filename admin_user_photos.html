@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Photos - Admin - Elevance AI</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <!-- Google Analytics 4 - Direct tracking -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QWRC0ENT56"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-QWRC0ENT56');
+    </script>
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','{{ gtm_container_id }}');</script>
+    <!-- End Google Tag Manager -->
+    {% endif %}
+    <style>
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .admin-header {
+            margin-bottom: 2rem;
+        }
+        .admin-title {
+            font-size: 2rem;
+            font-weight: 300;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        .admin-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+        }
+        .user-info-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .user-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+        .user-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .user-info-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+        .user-info-value {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .badge-free {
+            background: #10b981;
+            color: white;
+        }
+        .badge-google {
+            background: #4285f4;
+            color: white;
+        }
+        .badge-email {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        .photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .photo-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+        .photo-card:hover {
+            border-color: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .photo-image-container {
+            position: relative;
+            width: 100%;
+            padding-top: 75%; /* 4:3 aspect ratio */
+            overflow: hidden;
+            background: var(--bg-secondary);
+        }
+        .photo-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-info {
+            padding: 1rem;
+        }
+        .photo-filename {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            word-break: break-word;
+        }
+        .photo-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .photo-date {
+            color: var(--text-secondary);
+        }
+        .photo-type-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+        .photo-type-badge.enhancement {
+            background: #3b82f6;
+            color: white;
+        }
+        .photo-type-badge.night {
+            background: #1e293b;
+            color: white;
+        }
+        .no-photos {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+        .no-photos-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .pagination a, .pagination span {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+        .pagination a:hover {
+            background: var(--bg-secondary);
+        }
+        .pagination .current {
+            background: var(--text-primary);
+            color: white;
+            border-color: var(--text-primary);
+        }
+        .admin-actions {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+        @media (max-width: 768px) {
+            .photos-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% if gtm_container_id %}
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    {% endif %}
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/" class="nav-brand-link">
+                    <h2>Elevance AI</h2>
+                </a>
+            </div>
+            <div class="nav-menu">
+                <a href="/admin" class="nav-link">Admin Dashboard</a>
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <div class="user-info">
+                    <span class="user-name">{{ current_user.username }}</span>
+                </div>
+                <a href="/logout" class="btn btn-outline">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1 class="admin-title">User Photos</h1>
+            <p class="admin-subtitle">Viewing photos for {{ user.username }}</p>
+        </div>
+
+        <!-- User Info Card -->
+        <div class="user-info-card">
+            <div class="user-info-grid">
+                <div class="user-info-item">
+                    <div class="user-info-label">Username</div>
+                    <div class="user-info-value">{{ user.username }}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Email</div>
+                    <div class="user-info-value">{{ user.email }}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Signup Method</div>
+                    <div class="user-info-value">
+                        {% if user.google_id %}
+                            <span class="badge badge-google">Google</span>
+                        {% else %}
+                            <span class="badge badge-email">Email</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Photos Processed</div>
+                    <div class="user-info-value">{{ user.images_processed }}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Account Created</div>
+                    <div class="user-info-value">{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A' }}</div>
+                </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Free Access</div>
+                    <div class="user-info-value">
+                        {% if user.has_free_access %}
+                            <span class="badge badge-free">Yes</span>
+                        {% else %}
+                            <span style="color: var(--text-secondary);">No</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Photos Grid -->
+        {% if photos %}
+        <div class="photos-grid">
+            {% for photo in photos %}
+            <div class="photo-card">
+                <div class="photo-image-container">
+                    <img src="/api/photos/{{ photo.id }}/enhanced" 
+                         alt="{{ photo.enhanced_filename }}" 
+                         class="photo-image"
+                         loading="lazy">
+                </div>
+                <div class="photo-info">
+                    <div class="photo-filename">{{ photo.original_filename }}</div>
+                    <div class="photo-meta">
+                        <span class="photo-date">{{ photo.created_at.strftime('%Y-%m-%d %H:%M') if photo.created_at else 'N/A' }}</span>
+                        <span class="photo-type-badge {{ photo.conversion_type }}">
+                            {% if photo.conversion_type == 'night_conversion' %}
+                                🌙 Night
+                            {% else %}
+                                ✨ Enhanced
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <div class="pagination">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('admin_user_photos', user_id=user.id, page=pagination.prev_num) }}">← Previous</a>
+            {% endif %}
+            
+            <span class="current">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+            
+            {% if pagination.has_next %}
+                <a href="{{ url_for('admin_user_photos', user_id=user.id, page=pagination.next_num) }}">Next →</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="no-photos">
+            <div class="no-photos-icon">📷</div>
+            <h3>No Photos Found</h3>
+            <p>This user hasn't enhanced any photos yet.</p>
+        </div>
+        {% endif %}
+
+        <div class="admin-actions">
+            <a href="/admin" class="btn btn-outline">← Back to Admin Dashboard</a>
+        </div>
+    </div>
+
+    {% if gtm_container_id %}
+    <script src="static/js/analytics.js"></script>
+    {% endif %}
+</body>
+</html>
