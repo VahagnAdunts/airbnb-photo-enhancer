@@ -29,6 +29,9 @@ class EnhancedImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     
+    # Anonymous user tracking (for non-registered users)
+    anonymous_session_id = db.Column(db.String(255), nullable=True, index=True)  # Unique identifier for anonymous users
+    
     # Original image information
     original_filename = db.Column(db.String(255), nullable=False)
     original_path = db.Column(db.String(500), nullable=False)
@@ -59,6 +62,7 @@ class EnhancedImage(db.Model):
         return {
             'id': self.id,
             'user_id': self.user_id,
+            'anonymous_session_id': self.anonymous_session_id,
             'original_filename': self.original_filename,
             'original_path': self.original_path,
             'original_file_size': self.original_file_size,

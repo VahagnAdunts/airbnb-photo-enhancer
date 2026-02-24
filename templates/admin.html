@@ -214,6 +214,14 @@
                 <div class="stat-label">Total Photos Processed</div>
                 <div class="stat-value">{{ stats.total_photos }}</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-label">Anonymous Users</div>
+                <div class="stat-value">{{ stats.unique_anonymous_users }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Anonymous Photos</div>
+                <div class="stat-value">{{ stats.total_anonymous_photos }}</div>
+            </div>
         </div>
 
         <!-- Search Bar -->
@@ -299,6 +307,55 @@
             {% endif %}
         </div>
         {% endif %}
+
+        <!-- Anonymous Users Section -->
+        <div style="margin-top: 3rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 300; color: var(--text-primary); margin-bottom: 1.5rem;">
+                Anonymous Users (Non-Registered)
+            </h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9375rem;">
+                Users who enhanced photos without registering. Identified by device/browser session.
+            </p>
+            
+            {% if anonymous_users %}
+            <div class="users-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Session ID</th>
+                            <th>Photos Enhanced</th>
+                            <th>First Photo</th>
+                            <th>Last Photo</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for anon_user in anonymous_users %}
+                        <tr>
+                            <td>
+                                <code style="font-size: 0.75rem; color: var(--text-primary); background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                    {{ anon_user.session_id }}
+                                </code>
+                            </td>
+                            <td><strong>{{ anon_user.photo_count }}</strong></td>
+                            <td>{{ anon_user.first_photo.strftime('%Y-%m-%d %H:%M') if anon_user.first_photo else 'N/A' }}</td>
+                            <td>{{ anon_user.last_photo.strftime('%Y-%m-%d %H:%M') if anon_user.last_photo else 'N/A' }}</td>
+                            <td>
+                                <a href="/admin/anonymous/{{ anon_user.session_id }}" class="btn btn-outline" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">
+                                    View Photos
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-secondary); background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius);">
+                No anonymous users found
+            </div>
+            {% endif %}
+        </div>
 
         <div class="admin-actions">
             <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>

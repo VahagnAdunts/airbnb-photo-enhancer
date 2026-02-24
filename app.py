@@ -9,6 +9,7 @@ import json
 import logging
 import re
 import time
+import hashlib
 from datetime import datetime
 from io import BytesIO
 from werkzeug.utils import secure_filename
@@ -993,10 +994,12 @@ def convert_to_night():
         try:
             # Check if user is authenticated
             user_id = current_user.id if current_user.is_authenticated else None
-            logger.info(f"Saving night-converted image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}")
+            anonymous_session_id = None if current_user.is_authenticated else generate_anonymous_session_id()
+            logger.info(f"Saving night-converted image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}, Anonymous Session ID: {anonymous_session_id}")
             
             enhanced_image_record = EnhancedImage(
                 user_id=user_id,
+                anonymous_session_id=anonymous_session_id,
                 original_filename=filename,
                 original_path=original_path,
                 original_file_size=original_file_size,
@@ -1207,10 +1210,12 @@ def enhance_image():
         try:
             # Check if user is authenticated
             user_id = current_user.id if current_user.is_authenticated else None
-            logger.info(f"Saving enhanced image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}")
+            anonymous_session_id = None if current_user.is_authenticated else generate_anonymous_session_id()
+            logger.info(f"Saving enhanced image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}, Anonymous Session ID: {anonymous_session_id}")
             
             enhanced_image_record = EnhancedImage(
                 user_id=user_id,
+                anonymous_session_id=anonymous_session_id,
                 original_filename=filename,
                 original_path=original_path,
                 original_file_size=original_file_size,
@@ -1441,7 +1446,11 @@ def serve_original_photo(photo_id):
         photo = EnhancedImage.query.get_or_404(photo_id)
         
         # Check if the photo belongs to the current user OR if user is admin
-        if photo.user_id != current_user.id and not is_admin_user(current_user):
+        # For anonymous photos (user_id is None), only admin can access
+        if photo.user_id is None:
+            if not is_admin_user(current_user):
+                return jsonify({'error': 'Unauthorized'}), 403
+        elif photo.user_id != current_user.id and not is_admin_user(current_user):
             return jsonify({'error': 'Unauthorized'}), 403
         
         # Try to serve from file first (if it exists)
@@ -1595,7 +1604,11 @@ def serve_preview_photo(photo_id):
         photo = EnhancedImage.query.get_or_404(photo_id)
         
         # Check if the photo belongs to the current user OR if user is admin
-        if photo.user_id != current_user.id and not is_admin_user(current_user):
+        # For anonymous photos (user_id is None), only admin can access
+        if photo.user_id is None:
+            if not is_admin_user(current_user):
+                return jsonify({'error': 'Unauthorized'}), 403
+        elif photo.user_id != current_user.id and not is_admin_user(current_user):
             return jsonify({'error': 'Unauthorized'}), 403
         
         # Get image bytes
@@ -1632,7 +1645,11 @@ def serve_enhanced_photo(photo_id):
         photo = EnhancedImage.query.get_or_404(photo_id)
         
         # Check if the photo belongs to the current user OR if user is admin
-        if photo.user_id != current_user.id and not is_admin_user(current_user):
+        # For anonymous photos (user_id is None), only admin can access
+        if photo.user_id is None:
+            if not is_admin_user(current_user):
+                return jsonify({'error': 'Unauthorized'}), 403
+        elif photo.user_id != current_user.id and not is_admin_user(current_user):
             return jsonify({'error': 'Unauthorized'}), 403
         
         # Check if user has paid for this photo (or has free access)
@@ -1675,7 +1692,11 @@ def download_enhanced_photo(photo_id):
         photo = EnhancedImage.query.get_or_404(photo_id)
         
         # Check if the photo belongs to the current user OR if user is admin
-        if photo.user_id != current_user.id and not is_admin_user(current_user):
+        # For anonymous photos (user_id is None), only admin can access
+        if photo.user_id is None:
+            if not is_admin_user(current_user):
+                return jsonify({'error': 'Unauthorized'}), 403
+        elif photo.user_id != current_user.id and not is_admin_user(current_user):
             return jsonify({'error': 'Unauthorized'}), 403
         
         # Check if user has paid for this photo (or has free access)
@@ -2206,6 +2227,31 @@ def set_free_access():
         return jsonify({'error': 'An error occurred'}), 500
 
 # Helper function to check if user is admin
+def generate_anonymous_session_id():
+    """Generate a unique anonymous session ID based on session, IP, and user agent.
+    This creates a consistent identifier for anonymous users across requests.
+    """
+    # Get session ID (Flask session)
+    session_id = session.get('anonymous_id')
+    if not session_id:
+        # Generate a new session ID if it doesn't exist
+        session_id = hashlib.sha256(f"{time.time()}{os.urandom(16)}".encode()).hexdigest()[:16]
+        session['anonymous_id'] = session_id
+    
+    # Get IP address (hashed for privacy)
+    ip_address = request.remote_addr or 'unknown'
+    ip_hash = hashlib.sha256(ip_address.encode()).hexdigest()[:16]
+    
+    # Get user agent (hashed for privacy)
+    user_agent = request.headers.get('User-Agent', 'unknown')
+    ua_hash = hashlib.sha256(user_agent.encode()).hexdigest()[:16]
+    
+    # Combine to create a unique but consistent identifier
+    combined = f"{session_id}:{ip_hash}:{ua_hash}"
+    anonymous_id = hashlib.sha256(combined.encode()).hexdigest()[:32]
+    
+    return anonymous_id
+
 def is_admin_user(user):
     """Check if a user has admin privileges.
     Admin status can be set via:
@@ -2273,6 +2319,22 @@ def admin_dashboard():
         free_access_users = User.query.filter_by(has_free_access=True).count()
         total_photos = db.session.query(db.func.sum(User.images_processed)).scalar() or 0
         
+        # Anonymous user statistics
+        from sqlalchemy import func
+        anonymous_stats = db.session.query(
+            EnhancedImage.anonymous_session_id,
+            func.count(EnhancedImage.id).label('photo_count'),
+            func.min(EnhancedImage.created_at).label('first_photo'),
+            func.max(EnhancedImage.created_at).label('last_photo')
+        ).filter(
+            EnhancedImage.anonymous_session_id.is_not(None)
+        ).group_by(EnhancedImage.anonymous_session_id).all()
+        
+        unique_anonymous_users = len(anonymous_stats)
+        total_anonymous_photos = db.session.query(func.count(EnhancedImage.id)).filter(
+            EnhancedImage.anonymous_session_id.is_not(None)
+        ).scalar() or 0
+        
         # Payment statistics
         total_completed_payments = Payment.query.filter_by(status='completed').count()
         total_revenue_cents = db.session.query(db.func.sum(Payment.amount)).filter(
@@ -2309,16 +2371,30 @@ def admin_dashboard():
                 'total_dollars': 0.0
             })
         
+        # Prepare anonymous users data (sorted by photo count, descending)
+        anonymous_users_data = [
+            {
+                'session_id': session_id,
+                'photo_count': photo_count,
+                'first_photo': first_photo,
+                'last_photo': last_photo
+            }
+            for session_id, photo_count, first_photo, last_photo in sorted(anonymous_stats, key=lambda x: x[1], reverse=True)
+        ]
+        
         return render_template('admin.html',
                              users=users,
                              pagination=pagination,
                              search_query=search_query,
+                             anonymous_users=anonymous_users_data,
                              stats={
                                  'total_users': total_users,
                                  'email_users': email_users,
                                  'google_users': google_users,
                                  'free_access_users': free_access_users,
                                  'total_photos': total_photos,
+                                 'unique_anonymous_users': unique_anonymous_users,
+                                 'total_anonymous_photos': total_anonymous_photos,
                                  'total_completed_payments': total_completed_payments,
                                  'total_revenue_dollars': total_revenue_dollars
                              })
@@ -2370,6 +2446,74 @@ def admin_user_photos(user_id):
     except Exception as e:
         logger.error(f"Error loading user photos for admin: {e}", exc_info=True)
         flash('An error occurred while loading user photos.', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/anonymous/<session_id>')
+@login_required
+def admin_anonymous_photos(session_id):
+    """Admin view to see an anonymous user's enhanced photos by session ID. Requires admin privileges."""
+    # Check if user is admin
+    if not is_admin_user(current_user):
+        logger.warning(f"Unauthorized admin access attempt by user {current_user.id} ({current_user.email})")
+        return render_template('error.html', 
+                             error_code=403,
+                             error_message="Access Denied",
+                             error_description="You don't have permission to access this page."), 403
+    
+    try:
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 20  # Photos per page
+        
+        # Query photos for this anonymous session
+        photos_query = EnhancedImage.query.filter_by(anonymous_session_id=session_id)
+        photos_query = photos_query.order_by(EnhancedImage.created_at.desc())
+        
+        # Paginate
+        pagination = photos_query.paginate(page=page, per_page=per_page, error_out=False)
+        photos = pagination.items
+        
+        # Filter out photos that don't exist (file or database backup)
+        valid_photos = []
+        for photo in photos:
+            # Check if photo is accessible (file exists OR database has backup)
+            file_exists = os.path.exists(photo.enhanced_path) or photo.enhanced_image_data is not None
+            if file_exists:
+                valid_photos.append(photo)
+        
+        # Get statistics for this anonymous session
+        from sqlalchemy import func
+        photo_count = db.session.query(func.count(EnhancedImage.id)).filter_by(
+            anonymous_session_id=session_id
+        ).scalar() or 0
+        
+        first_photo = db.session.query(func.min(EnhancedImage.created_at)).filter_by(
+            anonymous_session_id=session_id
+        ).scalar()
+        
+        last_photo = db.session.query(func.max(EnhancedImage.created_at)).filter_by(
+            anonymous_session_id=session_id
+        ).scalar()
+        
+        # Create a mock user-like object for the template
+        anonymous_user = type('AnonymousUser', (), {
+            'id': None,
+            'username': f'Anonymous ({session_id[:8]}...)',
+            'email': 'Not registered',
+            'session_id': session_id,
+            'photo_count': photo_count,
+            'first_photo': first_photo,
+            'last_photo': last_photo
+        })()
+        
+        return render_template('admin_user_photos.html',
+                             user=anonymous_user,
+                             photos=valid_photos,
+                             pagination=pagination,
+                             is_anonymous=True)
+    except Exception as e:
+        logger.error(f"Error loading anonymous user photos for admin: {e}", exc_info=True)
+        flash('An error occurred while loading anonymous user photos.', 'error')
         return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
