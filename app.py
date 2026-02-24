@@ -17,6 +17,8 @@ from image_enhancer import ImageEnhancer
 from models import db, User, EnhancedImage, Payment
 import stripe
 from sqlalchemy.exc import OperationalError
+from PIL import Image, ImageDraw, ImageFont
+import math
 
 # Load environment variables from .env file
 load_dotenv()
@@ -1466,10 +1468,129 @@ def serve_original_photo(photo_id):
         logger.error(f"Error serving original photo: {e}", exc_info=True)
         return jsonify({'error': 'Failed to serve photo'}), 500
 
-@app.route('/api/photos/<int:photo_id>/enhanced')
+def add_watermark(image_bytes, watermark_text="PREVIEW - ELEVANCE AI"):
+    """Add watermark to image bytes and return watermarked image bytes"""
+    try:
+        # Open image from bytes
+        img = Image.open(BytesIO(image_bytes))
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        # Reduce quality for preview (lower resolution)
+        width, height = img.size
+        preview_width = min(1200, width)  # Max 1200px width for preview
+        preview_height = int(height * (preview_width / width))
+        img = img.resize((preview_width, preview_height), Image.Resampling.LANCZOS)
+        
+        # Create a semi-transparent overlay
+        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+        
+        # Calculate font size based on image dimensions
+        font_size = max(24, min(img.width, img.height) // 20)
+        
+        # Try to use a default font, fallback to basic font if not available
+        font = None
+        font_paths = [
+            "/System/Library/Fonts/Helvetica.ttc",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/Windows/Fonts/arial.ttf",
+        ]
+        
+        for font_path in font_paths:
+            try:
+                if os.path.exists(font_path):
+                    font = ImageFont.truetype(font_path, font_size)
+                    break
+            except:
+                continue
+        
+        # Fallback to default font if no font file found
+        if font is None:
+            try:
+                font = ImageFont.load_default()
+            except:
+                # If even default font fails, create a simple font
+                font = None
+        
+        # Get text dimensions (handle case where font might be None)
+        if font:
+            bbox = draw.textbbox((0, 0), watermark_text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+        else:
+            # Estimate text dimensions if no font available
+            text_width = len(watermark_text) * 10
+            text_height = 20
+        
+        # Calculate position for diagonal watermark (repeated pattern)
+        spacing = text_width + 100
+        for y in range(-img.height, img.height * 2, spacing):
+            for x in range(-img.width, img.width * 2, spacing):
+                # Draw semi-transparent text
+                if font:
+                    draw.text(
+                        (x, y),
+                        watermark_text,
+                        fill=(255, 255, 255, 120),  # White with transparency
+                        font=font
+                    )
+                else:
+                    # Fallback: draw simple text without font
+                    draw.text(
+                        (x, y),
+                        watermark_text,
+                        fill=(255, 255, 255, 120)  # White with transparency
+                    )
+        
+        # Rotate overlay 45 degrees for diagonal watermark
+        overlay = overlay.rotate(-45, expand=False)
+        
+        # Composite overlay onto image
+        img_rgba = img.convert('RGBA')
+        watermarked = Image.alpha_composite(img_rgba, overlay)
+        watermarked = watermarked.convert('RGB')
+        
+        # Save to bytes with reduced quality
+        output = BytesIO()
+        watermarked.save(output, format='JPEG', quality=75)  # Lower quality for preview
+        output.seek(0)
+        return output.read()
+    except Exception as e:
+        logger.error(f"Error adding watermark: {e}", exc_info=True)
+        # Return original image if watermarking fails
+        return image_bytes
+
+def check_photo_payment(photo_id, user_id):
+    """Check if user has paid for a specific photo"""
+    try:
+        # Check if user has free access
+        user = User.query.get(user_id)
+        if user and user.has_free_access:
+            return True
+        
+        # Check if there's a completed payment for this photo
+        payments = Payment.query.filter_by(
+            user_id=user_id,
+            status='completed'
+        ).all()
+        
+        for payment in payments:
+            if payment.photo_ids:
+                paid_photo_ids = json.loads(payment.photo_ids)
+                if photo_id in paid_photo_ids:
+                    return True
+        
+        return False
+    except Exception as e:
+        logger.error(f"Error checking photo payment: {e}", exc_info=True)
+        return False
+
+@app.route('/api/photos/<int:photo_id>/preview')
 @login_required
-def serve_enhanced_photo(photo_id):
-    """Serve the enhanced image file"""
+def serve_preview_photo(photo_id):
+    """Serve a watermarked preview of the enhanced image"""
     try:
         photo = EnhancedImage.query.get_or_404(photo_id)
         
@@ -1477,6 +1598,51 @@ def serve_enhanced_photo(photo_id):
         if photo.user_id != current_user.id and not is_admin_user(current_user):
             return jsonify({'error': 'Unauthorized'}), 403
         
+        # Get image bytes
+        image_bytes = None
+        
+        # Try to get from file first
+        if os.path.exists(photo.enhanced_path):
+            with open(photo.enhanced_path, 'rb') as f:
+                image_bytes = f.read()
+        # If file doesn't exist, get from database (base64)
+        elif photo.enhanced_image_data:
+            try:
+                image_bytes = base64.b64decode(photo.enhanced_image_data)
+            except Exception as decode_error:
+                logger.error(f"Error decoding enhanced image {photo_id} from base64: {decode_error}")
+                return jsonify({'error': 'Failed to decode image data'}), 500
+        
+        if not image_bytes:
+            return jsonify({'error': 'Enhanced image not found'}), 404
+        
+        # Add watermark and return
+        watermarked_bytes = add_watermark(image_bytes)
+        return send_file(BytesIO(watermarked_bytes), mimetype='image/jpeg')
+        
+    except Exception as e:
+        logger.error(f"Error serving preview photo: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to serve photo'}), 500
+
+@app.route('/api/photos/<int:photo_id>/enhanced')
+@login_required
+def serve_enhanced_photo(photo_id):
+    """Serve the enhanced image file - now requires payment verification"""
+    try:
+        photo = EnhancedImage.query.get_or_404(photo_id)
+        
+        # Check if the photo belongs to the current user OR if user is admin
+        if photo.user_id != current_user.id and not is_admin_user(current_user):
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Check if user has paid for this photo (or has free access)
+        # Admins can always access
+        if not is_admin_user(current_user):
+            if not check_photo_payment(photo_id, current_user.id):
+                # User hasn't paid - return watermarked preview instead
+                return serve_preview_photo(photo_id)
+        
+        # User has paid or is admin - serve full-quality image
         # Try to serve from file first (if it exists)
         if os.path.exists(photo.enhanced_path):
             return send_file(photo.enhanced_path, mimetype='image/jpeg')
@@ -1500,6 +1666,48 @@ def serve_enhanced_photo(photo_id):
     except Exception as e:
         logger.error(f"Error serving enhanced photo: {e}", exc_info=True)
         return jsonify({'error': 'Failed to serve photo'}), 500
+
+@app.route('/api/photos/<int:photo_id>/download')
+@login_required
+def download_enhanced_photo(photo_id):
+    """Download full-quality enhanced image - requires payment verification"""
+    try:
+        photo = EnhancedImage.query.get_or_404(photo_id)
+        
+        # Check if the photo belongs to the current user OR if user is admin
+        if photo.user_id != current_user.id and not is_admin_user(current_user):
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Check if user has paid for this photo (or has free access)
+        # Admins can always download
+        if not is_admin_user(current_user):
+            if not check_photo_payment(photo_id, current_user.id):
+                return jsonify({'error': 'Payment required. Please complete payment to download this photo.'}), 403
+        
+        # User has paid or is admin - serve full-quality image for download
+        # Try to serve from file first (if it exists)
+        if os.path.exists(photo.enhanced_path):
+            return send_file(photo.enhanced_path, mimetype='image/jpeg', as_attachment=True, download_name=photo.enhanced_filename)
+        
+        # If file doesn't exist, serve from database (base64)
+        if photo.enhanced_image_data:
+            try:
+                logger.info(f"Downloading enhanced image {photo_id} from database (file not found)")
+                image_bytes = base64.b64decode(photo.enhanced_image_data)
+                if len(image_bytes) == 0:
+                    logger.warning(f"Enhanced image {photo_id} has empty base64 data")
+                    return jsonify({'error': 'Image data is empty'}), 404
+                return send_file(BytesIO(image_bytes), mimetype='image/jpeg', as_attachment=True, download_name=photo.enhanced_filename)
+            except Exception as decode_error:
+                logger.error(f"Error decoding enhanced image {photo_id} from base64: {decode_error}")
+                return jsonify({'error': 'Failed to decode image data'}), 500
+        
+        # Neither file nor database data available
+        logger.warning(f"Enhanced image {photo_id} not found in file system or database")
+        return jsonify({'error': 'Enhanced image not found'}), 404
+    except Exception as e:
+        logger.error(f"Error downloading enhanced photo: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to download photo'}), 500
 
 @app.route('/api/photos/<int:photo_id>', methods=['DELETE'])
 @login_required

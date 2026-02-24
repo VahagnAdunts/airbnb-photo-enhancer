@@ -465,5 +465,33 @@
     {% if gtm_container_id %}
     <script src="static/js/analytics.js"></script>
     {% endif %}
+    <script>
+        // Disable right-click and drag on enhanced images
+        document.addEventListener('DOMContentLoaded', function() {
+            // Disable right-click context menu on images
+            document.addEventListener('contextmenu', function(e) {
+                if (e.target.tagName === 'IMG' && (e.target.src.includes('/preview') || e.target.src.includes('/enhanced'))) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, false);
+            
+            // Disable drag on images
+            document.addEventListener('dragstart', function(e) {
+                if (e.target.tagName === 'IMG' && (e.target.src.includes('/preview') || e.target.src.includes('/enhanced'))) {
+                    e.preventDefault();
+                    return false;
+                }
+            }, false);
+            
+            // Disable text selection on images
+            document.addEventListener('selectstart', function(e) {
+                if (e.target.tagName === 'IMG') {
+                    e.preventDefault();
+                    return false;
+                }
+            }, false);
+        });
+    </script>
 </body>
 </html>

@@ -72,7 +72,7 @@
                     var filename = photo.enhanced_filename.replace('enhanced_', '').replace('.jpg', '');
                     return {
                         id: photo.id,
-                        enhancedUrl: '/api/photos/' + photo.id + '/enhanced',
+                        enhancedUrl: '/api/photos/' + photo.id + '/download',  // Use download endpoint after payment
                         originalName: filename
                     };
                 });

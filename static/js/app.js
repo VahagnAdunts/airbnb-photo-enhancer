@@ -520,7 +520,7 @@ function displayResults() {
                 <div class="comparison-side">
                     <div class="comparison-label-small">${image.conversionType === 'night_conversion' ? 'Night' : 'After'}</div>
                     <div class="result-image-container">
-                        <img src="${image.enhancedUrl}" alt="${image.conversionType === 'night_conversion' ? 'Night-converted property photo with lights on' : 'Enhanced'}" class="result-image" loading="lazy">
+                        <img src="${image.id ? `/api/photos/${image.id}/preview` : image.enhancedUrl}" alt="${image.conversionType === 'night_conversion' ? 'Night-converted property photo with lights on' : 'Enhanced'}" class="result-image" loading="lazy" oncontextmenu="return false;" draggable="false">
                     </div>
                 </div>
             </div>
@@ -728,7 +728,9 @@ if (downloadAllBtn) {
         // Payment completed or not required (preview photos) - proceed with download
         selectedImages.forEach((image, index) => {
             setTimeout(() => {
-                downloadImage(image.enhancedUrl, image.originalName);
+                // Use download endpoint for saved photos, or original URL for preview photos
+                const downloadUrl = image.id ? `/api/photos/${image.id}/download` : image.enhancedUrl;
+                downloadImage(downloadUrl, image.originalName);
             }, index * 200);
         });
         

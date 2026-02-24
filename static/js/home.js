@@ -598,7 +598,7 @@ function displayResults() {
                 <div class="comparison-side">
                     <div class="comparison-label-small">${afterLabel}</div>
                     <div class="result-image-container">
-                        <img src="${image.enhancedUrl}" alt="${afterAlt}" class="result-image" loading="lazy">
+                        <img src="${image.id ? `/api/photos/${image.id}/preview` : image.enhancedUrl}" alt="${afterAlt}" class="result-image" loading="lazy" oncontextmenu="return false;" draggable="false">
                     </div>
                 </div>
             </div>
@@ -656,7 +656,9 @@ async function downloadAllImages() {
     // Payment completed or not required (preview photos) - proceed with download
     enhancedImages.forEach((image, index) => {
         setTimeout(() => {
-            downloadImage(image.enhancedUrl, image.originalName);
+            // Use download endpoint for saved photos, or original URL for preview photos
+            const downloadUrl = image.id ? `/api/photos/${image.id}/download` : image.enhancedUrl;
+            downloadImage(downloadUrl, image.originalName);
         }, index * 200);
     });
     
@@ -711,7 +713,9 @@ async function initiatePayment(photoIds) {
                 // Proceed with download immediately
                 enhancedImages.forEach((image, index) => {
                     setTimeout(() => {
-                        downloadImage(image.enhancedUrl, image.originalName);
+                        // Use download endpoint for saved photos, or original URL for preview photos
+                        const downloadUrl = image.id ? `/api/photos/${image.id}/download` : image.enhancedUrl;
+                        downloadImage(downloadUrl, image.originalName);
                     }, index * 200);
                 });
                 
