@@ -2379,8 +2379,9 @@ def admin_dashboard():
                 EnhancedImage.anonymous_session_id.is_not(None)
             ).scalar() or 0
         except Exception as e:
-            # Column doesn't exist yet - set defaults
+            # Column doesn't exist yet - set defaults; rollback so later queries don't hit InFailedSqlTransaction
             logger.warning(f"Anonymous session tracking not available (column may not exist): {e}")
+            db.session.rollback()
             anonymous_stats = []
             unique_anonymous_users = 0
             total_anonymous_photos = 0
@@ -2454,6 +2455,7 @@ def admin_dashboard():
                              })
     except Exception as e:
         logger.error(f"Error loading admin dashboard: {e}", exc_info=True)
+        db.session.rollback()
         flash(f'Admin dashboard error: {str(e)}', 'error')
         # Return error page so we can see what failed (instead of silent redirect)
         return render_template('error.html',
