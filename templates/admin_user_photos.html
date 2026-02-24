@@ -257,29 +257,13 @@
 
     <div class="admin-container">
         <div class="admin-header">
-            <h1 class="admin-title">{% if is_anonymous %}Anonymous User Photos{% else %}User Photos{% endif %}</h1>
+            <h1 class="admin-title">User Photos</h1>
             <p class="admin-subtitle">Viewing photos for {{ user.username }}</p>
         </div>
 
         <!-- User Info Card -->
         <div class="user-info-card">
             <div class="user-info-grid">
-                {% if is_anonymous %}
-                <div class="user-info-item">
-                    <div class="user-info-label">Session ID</div>
-                    <div class="user-info-value">
-                        <code style="font-size: 0.875rem; color: var(--text-primary); background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">
-                            {{ user.session_id }}
-                        </code>
-                    </div>
-                </div>
-                <div class="user-info-item">
-                    <div class="user-info-label">Status</div>
-                    <div class="user-info-value">
-                        <span class="badge" style="background: #f59e0b; color: white;">Anonymous (Not Registered)</span>
-                    </div>
-                </div>
-                {% else %}
                 <div class="user-info-item">
                     <div class="user-info-label">Username</div>
                     <div class="user-info-value">{{ user.username }}</div>
@@ -298,21 +282,10 @@
                         {% endif %}
                     </div>
                 </div>
-                {% endif %}
                 <div class="user-info-item">
                     <div class="user-info-label">Photos Processed</div>
-                    <div class="user-info-value">{% if is_anonymous %}{{ user.photo_count }}{% else %}{{ user.images_processed }}{% endif %}</div>
+                    <div class="user-info-value">{{ user.images_processed }}</div>
                 </div>
-                {% if is_anonymous %}
-                <div class="user-info-item">
-                    <div class="user-info-label">First Photo</div>
-                    <div class="user-info-value">{{ user.first_photo.strftime('%Y-%m-%d %H:%M') if user.first_photo else 'N/A' }}</div>
-                </div>
-                <div class="user-info-item">
-                    <div class="user-info-label">Last Photo</div>
-                    <div class="user-info-value">{{ user.last_photo.strftime('%Y-%m-%d %H:%M') if user.last_photo else 'N/A' }}</div>
-                </div>
-                {% else %}
                 <div class="user-info-item">
                     <div class="user-info-label">Account Created</div>
                     <div class="user-info-value">{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A' }}</div>
@@ -327,7 +300,6 @@
                         {% endif %}
                     </div>
                 </div>
-                {% endif %}
             </div>
         </div>
 

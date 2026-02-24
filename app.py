@@ -994,38 +994,24 @@ def convert_to_night():
         try:
             # Check if user is authenticated
             user_id = current_user.id if current_user.is_authenticated else None
-            # Only set anonymous_session_id if column exists (after migration)
-            anonymous_session_id = None
-            if not current_user.is_authenticated:
-                try:
-                    anonymous_session_id = generate_anonymous_session_id()
-                except Exception as e:
-                    logger.warning(f"Could not generate anonymous session ID (column may not exist): {e}")
-                    anonymous_session_id = None
-            logger.info(f"Saving night-converted image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}, Anonymous Session ID: {anonymous_session_id}")
+            logger.info(f"Saving night-converted image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}")
             
-            # Create record - only set anonymous_session_id if it's not None
-            record_data = {
-                'user_id': user_id,
-                'original_filename': filename,
-                'original_path': original_path,
-                'original_file_size': original_file_size,
-                'enhanced_filename': night_filename,
-                'enhanced_path': night_path,
-                'enhanced_file_size': night_file_size,
-                'original_image_data': original_image_data,
-                'enhanced_image_data': night_image_data,
-                'conversion_type': 'night_conversion',
-                'change_intensity': 'moderate',  # Not used for night conversion but required
-                'detail_level': 'moderate',  # Not used for night conversion but required
-                'enhancement_settings': json.dumps(conversion_info) if conversion_info else None,
-                'ai_analysis': conversion_info.get('response', '') if conversion_info else None
-            }
-            # Only add anonymous_session_id if we have a value (and column exists)
-            if anonymous_session_id:
-                record_data['anonymous_session_id'] = anonymous_session_id
-            
-            enhanced_image_record = EnhancedImage(**record_data)
+            enhanced_image_record = EnhancedImage(
+                user_id=user_id,
+                original_filename=filename,
+                original_path=original_path,
+                original_file_size=original_file_size,
+                enhanced_filename=night_filename,
+                enhanced_path=night_path,
+                enhanced_file_size=night_file_size,
+                original_image_data=original_image_data,
+                enhanced_image_data=night_image_data,
+                conversion_type='night_conversion',
+                change_intensity='moderate',
+                detail_level='moderate',
+                enhancement_settings=json.dumps(conversion_info) if conversion_info else None,
+                ai_analysis=conversion_info.get('response', '') if conversion_info else None
+            )
             
             db.session.add(enhanced_image_record)
             
@@ -1222,38 +1208,24 @@ def enhance_image():
         try:
             # Check if user is authenticated
             user_id = current_user.id if current_user.is_authenticated else None
-            # Only set anonymous_session_id if column exists (after migration)
-            anonymous_session_id = None
-            if not current_user.is_authenticated:
-                try:
-                    anonymous_session_id = generate_anonymous_session_id()
-                except Exception as e:
-                    logger.warning(f"Could not generate anonymous session ID (column may not exist): {e}")
-                    anonymous_session_id = None
-            logger.info(f"Saving enhanced image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}, Anonymous Session ID: {anonymous_session_id}")
+            logger.info(f"Saving enhanced image to database. User authenticated: {current_user.is_authenticated}, User ID: {user_id}")
             
-            # Create record - only set anonymous_session_id if it's not None
-            record_data = {
-                'user_id': user_id,
-                'original_filename': filename,
-                'original_path': original_path,
-                'original_file_size': original_file_size,
-                'enhanced_filename': enhanced_filename,
-                'enhanced_path': enhanced_path,
-                'enhanced_file_size': enhanced_file_size,
-                'original_image_data': original_image_data,
-                'enhanced_image_data': enhanced_image_data,
-                'conversion_type': 'enhancement',
-                'change_intensity': change_intensity,
-                'detail_level': detail_level,
-                'enhancement_settings': json.dumps(enhancements) if enhancements else None,
-                'ai_analysis': enhancements.get('response', '') if enhancements else None
-            }
-            # Only add anonymous_session_id if we have a value (and column exists)
-            if anonymous_session_id:
-                record_data['anonymous_session_id'] = anonymous_session_id
-            
-            enhanced_image_record = EnhancedImage(**record_data)
+            enhanced_image_record = EnhancedImage(
+                user_id=user_id,
+                original_filename=filename,
+                original_path=original_path,
+                original_file_size=original_file_size,
+                enhanced_filename=enhanced_filename,
+                enhanced_path=enhanced_path,
+                enhanced_file_size=enhanced_file_size,
+                original_image_data=original_image_data,
+                enhanced_image_data=enhanced_image_data,
+                conversion_type='enhancement',
+                change_intensity=change_intensity,
+                detail_level=detail_level,
+                enhancement_settings=json.dumps(enhancements) if enhancements else None,
+                ai_analysis=enhancements.get('response', '') if enhancements else None
+            )
             
             db.session.add(enhanced_image_record)
             
@@ -1264,33 +1236,12 @@ def enhance_image():
             
             # Use retry logic for database commit to handle recovery mode and connection errors
             def commit_operation():
-                try:
-                    db.session.commit()
-                except Exception as db_error:
-                    # If error is due to missing column, try without anonymous_session_id
-                    error_str = str(db_error).lower()
-                    if 'anonymous_session_id' in error_str or 'no such column' in error_str or 'does not exist' in error_str:
-                        logger.warning(f"Database column anonymous_session_id may not exist, retrying without it: {db_error}")
-                        db.session.rollback()
-                        # Remove anonymous_session_id and try again
-                        if 'anonymous_session_id' in record_data:
-                            del record_data['anonymous_session_id']
-                        nonlocal enhanced_image_record
-                        enhanced_image_record = EnhancedImage(**record_data)
-                        db.session.add(enhanced_image_record)
-                        if current_user.is_authenticated:
-                            current_user.images_processed += 1
-                        db.session.commit()
-                    else:
-                        raise
-                # Refresh the record to ensure we have the ID after commit
+                db.session.commit()
                 db.session.refresh(enhanced_image_record)
-                # Verify the ID was set
                 if enhanced_image_record.id is None:
                     raise Exception("Image ID was not set after commit")
                 return enhanced_image_record
             
-            # Retry commit and get the record back
             enhanced_image_record = retry_db_operation(commit_operation, max_retries=3, initial_delay=2, max_delay=10)
             
             # Double-check the ID is set
@@ -2268,32 +2219,6 @@ def set_free_access():
         db.session.rollback()
         return jsonify({'error': 'An error occurred'}), 500
 
-# Helper function to check if user is admin
-def generate_anonymous_session_id():
-    """Generate a unique anonymous session ID based on session, IP, and user agent.
-    This creates a consistent identifier for anonymous users across requests.
-    """
-    # Get session ID (Flask session)
-    session_id = session.get('anonymous_id')
-    if not session_id:
-        # Generate a new session ID if it doesn't exist
-        session_id = hashlib.sha256(f"{time.time()}{os.urandom(16)}".encode()).hexdigest()[:16]
-        session['anonymous_id'] = session_id
-    
-    # Get IP address (hashed for privacy)
-    ip_address = request.remote_addr or 'unknown'
-    ip_hash = hashlib.sha256(ip_address.encode()).hexdigest()[:16]
-    
-    # Get user agent (hashed for privacy)
-    user_agent = request.headers.get('User-Agent', 'unknown')
-    ua_hash = hashlib.sha256(user_agent.encode()).hexdigest()[:16]
-    
-    # Combine to create a unique but consistent identifier
-    combined = f"{session_id}:{ip_hash}:{ua_hash}"
-    anonymous_id = hashlib.sha256(combined.encode()).hexdigest()[:32]
-    
-    return anonymous_id
-
 def is_admin_user(user):
     """Check if a user has admin privileges.
     Admin status can be set via:
@@ -2361,31 +2286,6 @@ def admin_dashboard():
         free_access_users = User.query.filter_by(has_free_access=True).count()
         total_photos = db.session.query(db.func.sum(User.images_processed)).scalar() or 0
         
-        # Anonymous user statistics
-        # Handle case where column doesn't exist yet (before migration)
-        try:
-            from sqlalchemy import func
-            anonymous_stats = db.session.query(
-                EnhancedImage.anonymous_session_id,
-                func.count(EnhancedImage.id).label('photo_count'),
-                func.min(EnhancedImage.created_at).label('first_photo'),
-                func.max(EnhancedImage.created_at).label('last_photo')
-            ).filter(
-                EnhancedImage.anonymous_session_id.is_not(None)
-            ).group_by(EnhancedImage.anonymous_session_id).all()
-            
-            unique_anonymous_users = len(anonymous_stats)
-            total_anonymous_photos = db.session.query(func.count(EnhancedImage.id)).filter(
-                EnhancedImage.anonymous_session_id.is_not(None)
-            ).scalar() or 0
-        except Exception as e:
-            # Column doesn't exist yet - set defaults; rollback so later queries don't hit InFailedSqlTransaction
-            logger.warning(f"Anonymous session tracking not available (column may not exist): {e}")
-            db.session.rollback()
-            anonymous_stats = []
-            unique_anonymous_users = 0
-            total_anonymous_photos = 0
-        
         # Payment statistics
         total_completed_payments = Payment.query.filter_by(status='completed').count()
         total_revenue_cents = db.session.query(db.func.sum(Payment.amount)).filter(
@@ -2422,34 +2322,16 @@ def admin_dashboard():
                 'total_dollars': 0.0
             })
         
-        # Prepare anonymous users data (sorted by photo count, descending)
-        try:
-            anonymous_users_data = [
-                {
-                    'session_id': session_id,
-                    'photo_count': photo_count,
-                    'first_photo': first_photo,
-                    'last_photo': last_photo
-                }
-                for session_id, photo_count, first_photo, last_photo in sorted(anonymous_stats, key=lambda x: x[1], reverse=True)
-            ]
-        except Exception as e:
-            logger.warning(f"Error preparing anonymous users data: {e}")
-            anonymous_users_data = []
-        
         return render_template('admin.html',
                              users=users,
                              pagination=pagination,
                              search_query=search_query,
-                             anonymous_users=anonymous_users_data,
                              stats={
                                  'total_users': total_users,
                                  'email_users': email_users,
                                  'google_users': google_users,
                                  'free_access_users': free_access_users,
                                  'total_photos': total_photos,
-                                 'unique_anonymous_users': unique_anonymous_users,
-                                 'total_anonymous_photos': total_anonymous_photos,
                                  'total_completed_payments': total_completed_payments,
                                  'total_revenue_dollars': total_revenue_dollars
                              })
@@ -2506,74 +2388,6 @@ def admin_user_photos(user_id):
     except Exception as e:
         logger.error(f"Error loading user photos for admin: {e}", exc_info=True)
         flash('An error occurred while loading user photos.', 'error')
-        return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/anonymous/<session_id>')
-@login_required
-def admin_anonymous_photos(session_id):
-    """Admin view to see an anonymous user's enhanced photos by session ID. Requires admin privileges."""
-    # Check if user is admin
-    if not is_admin_user(current_user):
-        logger.warning(f"Unauthorized admin access attempt by user {current_user.id} ({current_user.email})")
-        return render_template('error.html', 
-                             error_code=403,
-                             error_message="Access Denied",
-                             error_description="You don't have permission to access this page."), 403
-    
-    try:
-        # Get pagination parameters
-        page = request.args.get('page', 1, type=int)
-        per_page = 20  # Photos per page
-        
-        # Query photos for this anonymous session
-        photos_query = EnhancedImage.query.filter_by(anonymous_session_id=session_id)
-        photos_query = photos_query.order_by(EnhancedImage.created_at.desc())
-        
-        # Paginate
-        pagination = photos_query.paginate(page=page, per_page=per_page, error_out=False)
-        photos = pagination.items
-        
-        # Filter out photos that don't exist (file or database backup)
-        valid_photos = []
-        for photo in photos:
-            # Check if photo is accessible (file exists OR database has backup)
-            file_exists = os.path.exists(photo.enhanced_path) or photo.enhanced_image_data is not None
-            if file_exists:
-                valid_photos.append(photo)
-        
-        # Get statistics for this anonymous session
-        from sqlalchemy import func
-        photo_count = db.session.query(func.count(EnhancedImage.id)).filter_by(
-            anonymous_session_id=session_id
-        ).scalar() or 0
-        
-        first_photo = db.session.query(func.min(EnhancedImage.created_at)).filter_by(
-            anonymous_session_id=session_id
-        ).scalar()
-        
-        last_photo = db.session.query(func.max(EnhancedImage.created_at)).filter_by(
-            anonymous_session_id=session_id
-        ).scalar()
-        
-        # Create a mock user-like object for the template
-        anonymous_user = type('AnonymousUser', (), {
-            'id': None,
-            'username': f'Anonymous ({session_id[:8]}...)',
-            'email': 'Not registered',
-            'session_id': session_id,
-            'photo_count': photo_count,
-            'first_photo': first_photo,
-            'last_photo': last_photo
-        })()
-        
-        return render_template('admin_user_photos.html',
-                             user=anonymous_user,
-                             photos=valid_photos,
-                             pagination=pagination,
-                             is_anonymous=True)
-    except Exception as e:
-        logger.error(f"Error loading anonymous user photos for admin: {e}", exc_info=True)
-        flash('An error occurred while loading anonymous user photos.', 'error')
         return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
