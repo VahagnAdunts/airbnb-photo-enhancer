@@ -2284,7 +2284,8 @@ def admin_dashboard():
         email_users = User.query.filter(User.google_id.is_(None)).count()
         google_users = User.query.filter(User.google_id.is_not(None)).count()
         free_access_users = User.query.filter_by(has_free_access=True).count()
-        total_photos = db.session.query(db.func.sum(User.images_processed)).scalar() or 0
+        # Total enhanced images (all records in EnhancedImage, including any with user_id NULL)
+        total_photos = EnhancedImage.query.count()
         
         # Payment statistics
         total_completed_payments = Payment.query.filter_by(status='completed').count()
