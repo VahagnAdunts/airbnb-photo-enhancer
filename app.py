@@ -2303,14 +2303,14 @@ def is_admin_user(user):
     if not user or not user.is_authenticated:
         return False
     
-    # Check database flag
-    if user.is_admin:
+    # Check database flag (use getattr in case column doesn't exist yet)
+    if getattr(user, 'is_admin', False):
         return True
     
     # Check ADMIN_EMAILS environment variable
     admin_emails = os.getenv('ADMIN_EMAILS', '')
-    if admin_emails:
-        admin_email_list = [email.strip().lower() for email in admin_emails.split(',')]
+    if admin_emails and getattr(user, 'email', None):
+        admin_email_list = [e.strip().lower() for e in admin_emails.split(',')]
         if user.email.lower() in admin_email_list:
             return True
     
@@ -2454,8 +2454,12 @@ def admin_dashboard():
                              })
     except Exception as e:
         logger.error(f"Error loading admin dashboard: {e}", exc_info=True)
-        flash('An error occurred while loading the admin dashboard.', 'error')
-        return redirect(url_for('dashboard'))
+        flash(f'Admin dashboard error: {str(e)}', 'error')
+        # Return error page so we can see what failed (instead of silent redirect)
+        return render_template('error.html',
+                             error_code=500,
+                             error_message="Admin Dashboard Error",
+                             error_description=str(e)), 500
 
 @app.route('/admin/user/<int:user_id>')
 @login_required
