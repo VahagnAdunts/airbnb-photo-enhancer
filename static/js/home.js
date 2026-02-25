@@ -587,6 +587,11 @@ function displayResults() {
         const beforeAlt = isNightConversion ? 'Original day property photo' : 'Original property photo before AI enhancement';
         const afterAlt = isNightConversion ? 'Night-converted property photo with lights on' : 'AI-enhanced property photo for Airbnb or real estate listing';
         
+        // Use inline data URL when available (so "After" image works for anonymous users on home page;
+        // /api/photos/.../preview requires login and would break for guests)
+        const afterImageSrc = (image.enhancedUrl && image.enhancedUrl.startsWith('data:'))
+            ? image.enhancedUrl
+            : (image.id ? `/api/photos/${image.id}/preview` : image.enhancedUrl);
         resultItem.innerHTML = `
             <div class="result-comparison">
                 <div class="comparison-side">
@@ -598,7 +603,7 @@ function displayResults() {
                 <div class="comparison-side">
                     <div class="comparison-label-small">${afterLabel}</div>
                     <div class="result-image-container">
-                        <img src="${image.id ? `/api/photos/${image.id}/preview` : image.enhancedUrl}" alt="${afterAlt}" class="result-image" loading="lazy" oncontextmenu="return false;" draggable="false">
+                        <img src="${afterImageSrc}" alt="${afterAlt}" class="result-image" loading="lazy" oncontextmenu="return false;" draggable="false">
                     </div>
                 </div>
             </div>
