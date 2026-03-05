@@ -659,13 +659,13 @@ async function downloadAllImages() {
     }
     
     // Payment completed or not required (preview photos) - proceed with download
-    enhancedImages.forEach((image, index) => {
-        setTimeout(() => {
-            // Use download endpoint for saved photos, or original URL for preview photos
-            const downloadUrl = image.id ? `/api/photos/${image.id}/download` : image.enhancedUrl;
-            downloadImage(downloadUrl, image.originalName);
-        }, index * 200);
-    });
+    // Sequential downloads with delay: browsers block multiple programmatic downloads
+    // in one gesture unless each is triggered one-after-another with a short gap.
+    for (const image of enhancedImages) {
+        const downloadUrl = image.id ? `/api/photos/${image.id}/download` : image.enhancedUrl;
+        await downloadImage(downloadUrl, image.originalName);
+        await new Promise(r => setTimeout(r, 400));
+    }
     
     // Clear saved images after successful download
     localStorage.removeItem('pendingEnhancedImages');
@@ -715,14 +715,11 @@ async function initiatePayment(photoIds) {
             // Check if user has free access - proceed directly to download
             if (data.free_access === true) {
                 console.log('Free access granted - proceeding with download');
-                // Proceed with download immediately
-                enhancedImages.forEach((image, index) => {
-                    setTimeout(() => {
-                        // Use download endpoint for saved photos, or original URL for preview photos
-                        const downloadUrl = image.id ? `/api/photos/${image.id}/download` : image.enhancedUrl;
-                        downloadImage(downloadUrl, image.originalName);
-                    }, index * 200);
-                });
+                for (const image of enhancedImages) {
+                    const downloadUrl = image.id ? `/api/photos/${image.id}/download` : image.enhancedUrl;
+                    await downloadImage(downloadUrl, image.originalName);
+                    await new Promise(r => setTimeout(r, 400));
+                }
                 
                 // Clear saved images after successful download
                 localStorage.removeItem('pendingEnhancedImages');
@@ -746,13 +743,38 @@ async function initiatePayment(photoIds) {
     }
 }
 
+/**
+ * Trigger a single image download. Returns a Promise so callers can run downloads
+ * sequentially. Browsers block multiple programmatic downloads in one gesture
+ * unless each is triggered one-after-another with a short gap.
+ */
 function downloadImage(url, filename) {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename.replace(/\.[^/.]+$/, '_enhanced.jpg');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const downloadFilename = (filename || 'image').replace(/\.[^/.]+$/, '_enhanced.jpg');
+    if (url.startsWith('data:')) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = downloadFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return Promise.resolve();
+    }
+    return fetch(url)
+        .then(response => response.blob())
+        .then(blob => {
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = downloadFilename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+        })
+        .catch(error => {
+            console.error('Error downloading image:', error);
+            window.open(url, '_blank');
+        });
 }
 
 function showComparison(index) {

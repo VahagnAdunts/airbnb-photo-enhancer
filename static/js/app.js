@@ -541,36 +541,38 @@ function displayResults() {
     updateSelectionUI();
 }
 
+/**
+ * Trigger a single image download. Returns a Promise so callers can run downloads
+ * sequentially. Browsers often block multiple programmatic downloads in one gesture
+ * unless they are spaced out; sequential await + delay ensures each download is allowed.
+ */
 function downloadImage(url, filename) {
-    // Handle both base64 data URLs and regular URLs
+    const downloadFilename = (filename || 'image').replace(/\.[^/.]+$/, '_enhanced.jpg');
     if (url.startsWith('data:')) {
-        // Base64 data URL - direct download
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename.replace(/\.[^/.]+$/, '_enhanced.jpg');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    } else {
-        // Regular URL - fetch and download
-        fetch(url)
-            .then(response => response.blob())
-            .then(blob => {
-                const blobUrl = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = blobUrl;
-                link.download = filename.replace(/\.[^/.]+$/, '_enhanced.jpg');
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(blobUrl);
-            })
-            .catch(error => {
-                console.error('Error downloading image:', error);
-                // Fallback: open in new tab
-                window.open(url, '_blank');
-            });
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = downloadFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return Promise.resolve();
     }
+    return fetch(url)
+        .then(response => response.blob())
+        .then(blob => {
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = downloadFilename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+        })
+        .catch(error => {
+            console.error('Error downloading image:', error);
+            window.open(url, '_blank');
+        });
 }
 
 function showComparison(index) {
@@ -726,13 +728,13 @@ if (downloadAllBtn) {
         }
         
         // Payment completed or not required (preview photos) - proceed with download
-        selectedImages.forEach((image, index) => {
-            setTimeout(() => {
-                // Use download endpoint for saved photos, or original URL for preview photos
-                const downloadUrl = image.id ? `/api/photos/${image.id}/download` : image.enhancedUrl;
-                downloadImage(downloadUrl, image.originalName);
-            }, index * 200);
-        });
+        // Sequential downloads with delay: browsers block multiple programmatic downloads
+        // in one gesture unless each is triggered one-after-another with a short gap.
+        for (const image of selectedImages) {
+            const downloadUrl = image.id ? `/api/photos/${image.id}/download` : image.enhancedUrl;
+            await downloadImage(downloadUrl, image.originalName);
+            await new Promise(r => setTimeout(r, 400));
+        }
         
         // Clear localStorage after download (only if all were from localStorage)
         const allFromLocalStorage = enhancedImages.every(img => img.enhancedUrl && img.enhancedUrl.startsWith('data:'));
