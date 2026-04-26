@@ -587,11 +587,12 @@ function displayResults() {
         const beforeAlt = isNightConversion ? 'Original day property photo' : 'Original property photo before AI enhancement';
         const afterAlt = isNightConversion ? 'Night-converted property photo with lights on' : 'AI-enhanced property photo for Airbnb or real estate listing';
         
-        // Use inline data URL when available (so "After" image works for anonymous users on home page;
-        // /api/photos/.../preview requires login and would break for guests)
-        const afterImageSrc = (image.enhancedUrl && image.enhancedUrl.startsWith('data:'))
-            ? image.enhancedUrl
-            : (image.id ? `/api/photos/${image.id}/preview` : image.enhancedUrl);
+        // When the photo is saved (has id), always show the watermarked preview URL. Guests can load
+        // /api/photos/:id/preview for unclaimed photos; logged-in users see preview for their rows.
+        // Only fall back to inline data URL when there is no persisted photo id.
+        const afterImageSrc = image.id
+            ? `/api/photos/${image.id}/preview`
+            : image.enhancedUrl;
         resultItem.innerHTML = `
             <div class="result-comparison">
                 <div class="comparison-side">
@@ -784,13 +785,14 @@ function showComparison(index) {
     
     if (!modal || !content) return;
     
+    const enhancedModalSrc = image.id ? `/api/photos/${image.id}/preview` : image.enhancedUrl;
     content.innerHTML = `
         <div class="comparison-image-wrapper">
             <img src="${image.originalUrl}" alt="Original property photo before AI enhancement" class="comparison-image">
             <div class="comparison-label">Original</div>
         </div>
         <div class="comparison-image-wrapper">
-            <img src="${image.enhancedUrl}" alt="AI-enhanced property photo for Airbnb or real estate listing" class="comparison-image">
+            <img src="${enhancedModalSrc}" alt="AI-enhanced property photo for Airbnb or real estate listing" class="comparison-image">
             <div class="comparison-label">Enhanced</div>
         </div>
     `;

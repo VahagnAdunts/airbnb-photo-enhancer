@@ -280,7 +280,7 @@
                                 {% endif %}
                             </td>
                             <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A' }}</td>
-                            <td>{{ user.images_processed }}</td>
+                            <td>{{ user.photo_count }}</td>
                             <td>
                                 {% if user.payment_info.count > 0 %}
                                     <span class="badge" style="background: #10b981; color: white;">{{ user.payment_info.count }}</span>

@@ -1590,19 +1590,29 @@ def check_photo_payment(photo_id, user_id):
         return False
 
 @app.route('/api/photos/<int:photo_id>/preview')
-@login_required
 def serve_preview_photo(photo_id):
-    """Serve a watermarked preview of the enhanced image"""
+    """Serve a watermarked preview of the enhanced image.
+
+    - Logged-out users may only preview *unclaimed* photos (user_id is None), e.g. home page
+      guests right after enhance. Claimed photos require login.
+    - Logged-in owners and admins follow the same rules as before.
+    """
     try:
         photo = EnhancedImage.query.get_or_404(photo_id)
-        
-        # Check if the photo belongs to the current user OR if user is admin
-        # For anonymous photos (user_id is None), only admin can access
-        if photo.user_id is None:
-            if not is_admin_user(current_user):
+
+        if current_user.is_authenticated:
+            if is_admin_user(current_user):
+                pass  # Admin can preview any photo
+            elif photo.user_id is None:
+                pass  # Unclaimed: allow (e.g. user still on home or about to link on login)
+            elif photo.user_id == current_user.id:
+                pass  # Owner
+            else:
                 return jsonify({'error': 'Unauthorized'}), 403
-        elif photo.user_id != current_user.id and not is_admin_user(current_user):
-            return jsonify({'error': 'Unauthorized'}), 403
+        else:
+            # Anonymous: only unclaimed guest uploads get a public watermarked preview
+            if photo.user_id is not None:
+                return jsonify({'error': 'Login required'}), 401
         
         # Get image bytes
         image_bytes = None
@@ -2294,11 +2304,13 @@ def admin_dashboard():
         ).scalar() or 0
         total_revenue_dollars = total_revenue_cents / 100.0
         
-        # Add payment info to each user
+        # Add per-user payment and photo info for the users on the current page
         user_ids = [user.id for user in users]
         payments_by_user = {}
+        photos_by_user = {}
         if user_ids:
             from sqlalchemy import func
+            # Aggregate completed payments per user
             payment_stats = db.session.query(
                 Payment.user_id,
                 func.count(Payment.id).label('payment_count'),
@@ -2314,14 +2326,27 @@ def admin_dashboard():
                     'total_cents': total_paid_cents or 0,
                     'total_dollars': (total_paid_cents or 0) / 100.0
                 }
+            
+            # Aggregate photos per user based on EnhancedImage records
+            photo_stats = db.session.query(
+                EnhancedImage.user_id,
+                func.count(EnhancedImage.id).label('photo_count')
+            ).filter(
+                EnhancedImage.user_id.in_(user_ids)
+            ).group_by(EnhancedImage.user_id).all()
+            
+            for user_id, photo_count in photo_stats:
+                photos_by_user[user_id] = photo_count or 0
         
-        # Attach payment info to users
+        # Attach aggregated info to users
         for user in users:
             user.payment_info = payments_by_user.get(user.id, {
                 'count': 0,
                 'total_cents': 0,
                 'total_dollars': 0.0
             })
+            # photo_count reflects real EnhancedImage rows; fall back to images_processed
+            user.photo_count = photos_by_user.get(user.id, user.images_processed or 0)
         
         return render_template('admin.html',
                              users=users,
