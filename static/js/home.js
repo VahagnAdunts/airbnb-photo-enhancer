@@ -530,7 +530,7 @@ async function handleFiles(files) {
 
             if (error.trialLimitReached) {
                 stopProcessing = true;
-                alert(`Free trial limit reached (${error.trialCount}/${error.trialLimit} photos). Please sign up to continue enhancing photos.`);
+                showTrialLimitModal(error.trialCount, error.trialLimit);
                 if (signupPrompt) {
                     signupPrompt.style.display = 'block';
                 }
@@ -826,11 +826,32 @@ function closeComparison() {
     }
 }
 
+function showTrialLimitModal(trialCount, trialLimit) {
+    const modal = document.getElementById('trialLimitModal');
+    const message = document.getElementById('trialLimitMessage');
+    if (!modal || !message) return;
+
+    message.textContent = `You've reached your free trial limit (${trialCount}/${trialLimit} photos). Create a free account to keep enhancing photos.`;
+    modal.classList.add('active');
+}
+
+function closeTrialLimitModal() {
+    const modal = document.getElementById('trialLimitModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
 // Close modal on outside click
 document.addEventListener('click', (e) => {
-    const modal = document.getElementById('comparisonModal');
-    if (modal && e.target === modal) {
+    const comparisonModal = document.getElementById('comparisonModal');
+    if (comparisonModal && e.target === comparisonModal) {
         closeComparison();
+    }
+
+    const trialModal = document.getElementById('trialLimitModal');
+    if (trialModal && e.target === trialModal) {
+        closeTrialLimitModal();
     }
 });
 

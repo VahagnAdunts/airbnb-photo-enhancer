@@ -2105,6 +2105,84 @@ body {
     border-color: var(--text-primary);
 }
 
+/* Trial limit modal */
+.trial-limit-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    z-index: 1100;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.trial-limit-modal.active {
+    display: flex;
+}
+
+.trial-limit-card {
+    width: min(520px, 100%);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    position: relative;
+    box-shadow: 0 16px 50px rgba(15, 23, 42, 0.3);
+}
+
+.trial-limit-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.trial-limit-close:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.trial-limit-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: #fff1f2;
+    color: #e11d48;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+}
+
+.trial-limit-card h3 {
+    margin: 0 0 0.4rem 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+}
+
+.trial-limit-card p {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.55;
+}
+
+.trial-limit-actions {
+    margin-top: 1.2rem;
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
 /* ============================================
    Responsive Design
    ============================================ */

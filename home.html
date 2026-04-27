@@ -462,6 +462,19 @@
         <div class="comparison-content" id="comparisonContent"></div>
     </div>
 
+    <div class="trial-limit-modal" id="trialLimitModal">
+        <div class="trial-limit-card">
+            <button class="trial-limit-close" type="button" onclick="closeTrialLimitModal()">&times;</button>
+            <div class="trial-limit-icon">!</div>
+            <h3>Free Trial Limit Reached</h3>
+            <p id="trialLimitMessage">You've reached the free trial limit. Please sign up to continue enhancing photos.</p>
+            <div class="trial-limit-actions">
+                <a href="/signup" class="btn btn-primary">Sign Up Free</a>
+                <button type="button" class="btn btn-outline" onclick="closeTrialLimitModal()">Maybe Later</button>
+            </div>
+        </div>
+    </div>
+
     <script src="static/js/home.js"></script>
     {% if gtm_container_id %}
     <script src="static/js/analytics.js"></script>
