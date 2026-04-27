@@ -20,6 +20,7 @@ import stripe
 from sqlalchemy.exc import OperationalError
 from PIL import Image, ImageDraw, ImageFont
 import math
+import uuid
 
 # Load environment variables from .env file
 load_dotenv()
@@ -228,6 +229,8 @@ else:
 
 # Price per photo in cents ($0.9 = 90 cents)
 PHOTO_PRICE_CENTS = 90
+ANONYMOUS_TRIAL_LIMIT = int(os.getenv('ANONYMOUS_TRIAL_LIMIT', '5'))
+ANONYMOUS_BROWSER_COOKIE = 'anon_browser_id'
 
 CORS(app)
 
@@ -303,6 +306,41 @@ def validate_username(username):
         return False
     pattern = r'^[a-zA-Z0-9_-]{3,30}$'
     return bool(re.match(pattern, username))
+
+def get_or_init_anonymous_trial():
+    """Return (browser_id, cookie_created, current_count) for anonymous trial limiting."""
+    browser_id = request.cookies.get(ANONYMOUS_BROWSER_COOKIE)
+    cookie_created = False
+    if not browser_id:
+        browser_id = uuid.uuid4().hex
+        cookie_created = True
+
+    # Keep count tied to the current browser_id in session
+    if session.get('anon_trial_browser_id') != browser_id:
+        session['anon_trial_browser_id'] = browser_id
+        session['anon_trial_count'] = 0
+
+    current_count = int(session.get('anon_trial_count', 0))
+    return browser_id, cookie_created, current_count
+
+def increment_anonymous_trial_count():
+    current_count = int(session.get('anon_trial_count', 0))
+    current_count += 1
+    session['anon_trial_count'] = current_count
+    return current_count
+
+def attach_anonymous_browser_cookie(response, browser_id, cookie_created):
+    """Attach anonymous browser id cookie when we generate a new one."""
+    if cookie_created and browser_id:
+        response.set_cookie(
+            ANONYMOUS_BROWSER_COOKIE,
+            browser_id,
+            max_age=60 * 60 * 24 * 365,  # 1 year
+            httponly=True,
+            samesite='Lax',
+            secure=request.is_secure
+        )
+    return response
 
 # Create database tables with error handling
 with app.app_context():
@@ -961,6 +999,19 @@ def convert_to_night():
         if not allowed_file(file.filename):
             logger.warning(f"Invalid file type attempted: {file.filename}")
             return jsonify({'error': 'Invalid file type'}), 400
+
+        anon_browser_id = None
+        anon_cookie_created = False
+        if not current_user.is_authenticated:
+            anon_browser_id, anon_cookie_created, anon_count = get_or_init_anonymous_trial()
+            if anon_count >= ANONYMOUS_TRIAL_LIMIT:
+                limit_resp = jsonify({
+                    'error': f'Free trial limit reached ({ANONYMOUS_TRIAL_LIMIT} photos). Please sign up to continue.',
+                    'trial_limit_reached': True,
+                    'trial_limit': ANONYMOUS_TRIAL_LIMIT,
+                    'trial_count': anon_count
+                })
+                return attach_anonymous_browser_cookie(limit_resp, anon_browser_id, anon_cookie_created), 403
         
         # Save original image
         filename = secure_filename(file.filename)
@@ -1131,7 +1182,7 @@ def convert_to_night():
                 'details': 'Image files could not be read or encoded.'
             }), 500
         
-        return jsonify({
+        response_payload = {
             'success': True,
             'original_image_url': original_url,
             'enhanced_image_url': night_url,  # Using same field name for consistency
@@ -1139,7 +1190,15 @@ def convert_to_night():
             'image_id': enhanced_image_record.id,
             'requires_login': not current_user.is_authenticated,
             'conversion_type': 'night_conversion'
-        })
+        }
+        if not current_user.is_authenticated:
+            new_count = increment_anonymous_trial_count()
+            response_payload['trial_limit'] = ANONYMOUS_TRIAL_LIMIT
+            response_payload['trial_count'] = new_count
+            response_payload['trial_remaining'] = max(0, ANONYMOUS_TRIAL_LIMIT - new_count)
+
+        response = jsonify(response_payload)
+        return attach_anonymous_browser_cookie(response, anon_browser_id, anon_cookie_created)
     
     except Exception as e:
         logger.error(f"Error in convert_to_night endpoint: {e}", exc_info=True)
@@ -1160,6 +1219,19 @@ def enhance_image():
         if not allowed_file(file.filename):
             logger.warning(f"Invalid file type attempted: {file.filename}")
             return jsonify({'error': 'Invalid file type'}), 400
+
+        anon_browser_id = None
+        anon_cookie_created = False
+        if not current_user.is_authenticated:
+            anon_browser_id, anon_cookie_created, anon_count = get_or_init_anonymous_trial()
+            if anon_count >= ANONYMOUS_TRIAL_LIMIT:
+                limit_resp = jsonify({
+                    'error': f'Free trial limit reached ({ANONYMOUS_TRIAL_LIMIT} photos). Please sign up to continue.',
+                    'trial_limit_reached': True,
+                    'trial_limit': ANONYMOUS_TRIAL_LIMIT,
+                    'trial_count': anon_count
+                })
+                return attach_anonymous_browser_cookie(limit_resp, anon_browser_id, anon_cookie_created), 403
         
         # Get enhancement settings from form data
         change_intensity = request.form.get('change_intensity', 'moderate')
@@ -1341,14 +1413,22 @@ def enhance_image():
                 'details': 'Image files could not be read or encoded.'
             }), 500
         
-        return jsonify({
+        response_payload = {
             'success': True,
             'original_image_url': original_url,
             'enhanced_image_url': enhanced_url,
             'enhancements': enhancements,
             'image_id': enhanced_image_record.id,
             'requires_login': not current_user.is_authenticated
-        })
+        }
+        if not current_user.is_authenticated:
+            new_count = increment_anonymous_trial_count()
+            response_payload['trial_limit'] = ANONYMOUS_TRIAL_LIMIT
+            response_payload['trial_count'] = new_count
+            response_payload['trial_remaining'] = max(0, ANONYMOUS_TRIAL_LIMIT - new_count)
+
+        response = jsonify(response_payload)
+        return attach_anonymous_browser_cookie(response, anon_browser_id, anon_cookie_created)
     
     except Exception as e:
         logger.error(f"Error in enhance_image endpoint: {e}", exc_info=True)

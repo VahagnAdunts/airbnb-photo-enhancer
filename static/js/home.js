@@ -451,7 +451,12 @@ async function handleFiles(files) {
     });
 
     // Process files one by one
+    let stopProcessing = false;
     for (const { file, progressItem, index } of progressItems) {
+        if (stopProcessing) {
+            updateProgress(progressItem, 'Skipped', 0);
+            continue;
+        }
         try {
             updateProgress(progressItem, 'Uploading...', 20);
             
@@ -486,7 +491,13 @@ async function handleFiles(files) {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                const error = new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                if (errorData.trial_limit_reached) {
+                    error.trialLimitReached = true;
+                    error.trialLimit = errorData.trial_limit;
+                    error.trialCount = errorData.trial_count;
+                }
+                throw error;
             }
 
             // Update processing message for the final step
@@ -516,6 +527,14 @@ async function handleFiles(files) {
             console.error(`Error processing ${file.name}:`, error);
             updateProgress(progressItem, 'Error: ' + error.message, 0);
             progressItem.element.style.borderLeftColor = '#FF385C';
+
+            if (error.trialLimitReached) {
+                stopProcessing = true;
+                alert(`Free trial limit reached (${error.trialCount}/${error.trialLimit} photos). Please sign up to continue enhancing photos.`);
+                if (signupPrompt) {
+                    signupPrompt.style.display = 'block';
+                }
+            }
         }
     }
 
