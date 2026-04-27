@@ -71,24 +71,30 @@ body {
     color: inherit;
     display: flex;
     align-items: center;
-    transition: opacity 0.2s ease;
+    gap: 0.6rem;
+    padding: 0.3rem 0.45rem 0.3rem 0.3rem;
+    border-radius: 999px;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .nav-brand-link:hover {
-    opacity: 0.7;
+    background: rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .nav-logo {
-    height: 36px;
+    height: 30px;
     width: auto;
     display: block;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(255, 56, 92, 0.25);
 }
 
 .nav-brand-text {
     color: var(--text-primary);
-    font-size: 1.25rem;
-    font-weight: 400;
-    letter-spacing: -0.5px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    letter-spacing: -0.2px;
     margin: 0;
     line-height: 1;
 }
@@ -286,6 +292,16 @@ body {
 
 .navbar-overlay .nav-brand-text {
     color: var(--text-primary);
+}
+
+.navbar-overlay .nav-brand-link {
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(4px);
+}
+
+.navbar-overlay .nav-brand-link:hover {
+    background: rgba(255, 255, 255, 0.78);
 }
 
 .navbar-overlay .nav-link {
