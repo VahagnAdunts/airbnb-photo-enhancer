@@ -2296,6 +2296,7 @@ def admin_dashboard():
         free_access_users = User.query.filter_by(has_free_access=True).count()
         # Total enhanced images (all records in EnhancedImage, including any with user_id NULL)
         total_photos = EnhancedImage.query.count()
+        anonymous_photos = EnhancedImage.query.filter(EnhancedImage.user_id.is_(None)).count()
         
         # Payment statistics
         total_completed_payments = Payment.query.filter_by(status='completed').count()
@@ -2358,6 +2359,7 @@ def admin_dashboard():
                                  'google_users': google_users,
                                  'free_access_users': free_access_users,
                                  'total_photos': total_photos,
+                                 'anonymous_photos': anonymous_photos,
                                  'total_completed_payments': total_completed_payments,
                                  'total_revenue_dollars': total_revenue_dollars
                              })
@@ -2414,6 +2416,43 @@ def admin_user_photos(user_id):
     except Exception as e:
         logger.error(f"Error loading user photos for admin: {e}", exc_info=True)
         flash('An error occurred while loading user photos.', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/anonymous-photos')
+@login_required
+def admin_anonymous_photos():
+    """Admin view to see enhanced photos uploaded by anonymous (unregistered) users."""
+    if not is_admin_user(current_user):
+        logger.warning(f"Unauthorized admin access attempt by user {current_user.id} ({current_user.email})")
+        return render_template('error.html',
+                             error_code=403,
+                             error_message="Access Denied",
+                             error_description="You don't have permission to access this page."), 403
+
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+
+        photos_query = EnhancedImage.query.filter(EnhancedImage.user_id.is_(None))
+        photos_query = photos_query.order_by(EnhancedImage.created_at.desc())
+
+        pagination = photos_query.paginate(page=page, per_page=per_page, error_out=False)
+        photos = pagination.items
+
+        valid_photos = []
+        for photo in photos:
+            # Keep only photos that can be rendered from filesystem or DB backup
+            file_exists = os.path.exists(photo.enhanced_path) or photo.enhanced_image_data is not None
+            if file_exists:
+                valid_photos.append(photo)
+
+        return render_template('admin_anonymous_photos.html',
+                             photos=valid_photos,
+                             pagination=pagination,
+                             total_anonymous_photos=photos_query.count())
+    except Exception as e:
+        logger.error(f"Error loading anonymous photos for admin: {e}", exc_info=True)
+        flash('An error occurred while loading anonymous photos.', 'error')
         return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':

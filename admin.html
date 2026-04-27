@@ -227,6 +227,10 @@
                 <div class="stat-value">{{ stats.total_photos }}</div>
             </div>
             <div class="stat-card">
+                <div class="stat-label">Anonymous Photos</div>
+                <div class="stat-value">{{ stats.anonymous_photos }}</div>
+            </div>
+            <div class="stat-card">
                 <div class="stat-label">Total Revenue</div>
                 <div class="stat-value">${{ "%.2f"|format(stats.total_revenue_dollars) }}</div>
             </div>
@@ -337,6 +341,7 @@
         {% endif %}
 
         <div class="admin-actions">
+            <a href="/admin/anonymous-photos" class="btn btn-primary">View Anonymous Photos</a>
             <a href="/dashboard" class="btn btn-outline">Back to Dashboard</a>
         </div>
     </div>
