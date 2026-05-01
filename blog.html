@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+
     <!-- Primary Meta Tags -->
     <title>Blog - Elevance AI | Tips & Guides for Airbnb & Real Estate Photography</title>
     <meta name="title" content="Blog - Elevance AI | Tips & Guides for Airbnb & Real Estate Photography">
     <meta name="description" content="Expert tips, guides, and insights on Airbnb photography, real estate photo enhancement, and property listing optimization. Learn how to increase bookings with better photos.">
     <meta name="keywords" content="Airbnb photography tips, real estate photography blog, property photo guides, Airbnb host tips, listing photo optimization, property management blog">
     <meta name="robots" content="index, follow">
-    
+
     <!-- Canonical URL -->
     <link rel="canonical" href="https://elevance.art/blog">
-    
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://elevance.art/blog">
@@ -21,20 +21,23 @@
     <meta property="og:description" content="Expert tips and guides on Airbnb photography, real estate photo enhancement, and property listing optimization.">
     <meta property="og:image" content="https://elevance.art/static/images/blog-og.jpg">
     <meta property="og:site_name" content="Elevance AI">
-    
+
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://elevance.art/blog">
     <meta name="twitter:title" content="Blog - Elevance AI">
     <meta name="twitter:description" content="Expert tips and guides on Airbnb photography and real estate photo enhancement.">
     <meta name="twitter:image" content="https://elevance.art/static/images/blog-twitter.jpg">
-    
+
     <!-- Preconnect for Performance -->
     <link rel="preconnect" href="https://www.googletagmanager.com">
     <link rel="dns-prefetch" href="https://www.googletagmanager.com">
-    
-    <link rel="stylesheet" href="static/css/style.css">
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
     {% if gtm_container_id %}
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -43,98 +46,320 @@
     'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
     })(window,document,'script','dataLayer','{{ gtm_container_id }}');</script>
     {% endif %}
-    
+
     <style>
+        /* Blog index — typography + layout overrides scoped to .blog-index */
+        .blog-index {
+            --blog-accent: #FF385C;
+            --blog-muted: #6B7280;
+            --blog-soft: #FAFAF8;
+            --blog-line: #EAEAEA;
+        }
+
         .blog-hero {
-            background: var(--bg-primary);
-            padding: 4rem 0 2rem;
-            margin-bottom: 2rem;
+            padding: 5rem 0 3rem;
+            text-align: center;
+            background:
+                radial-gradient(1200px 400px at 50% -100px, rgba(255, 56, 92, 0.08), transparent 60%),
+                var(--bg-primary);
+            border-bottom: 1px solid var(--blog-line);
+        }
+        .blog-hero-eyebrow {
+            display: inline-block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 600;
+            color: var(--blog-accent);
+            background: rgba(255, 56, 92, 0.08);
+            padding: 0.4rem 0.9rem;
+            border-radius: 999px;
+            margin-bottom: 1.25rem;
         }
         .blog-hero h1 {
-            font-size: 2.5rem;
-            font-weight: 400;
-            margin-bottom: 1rem;
-            text-align: center;
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: clamp(2.25rem, 5vw, 3.5rem);
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            margin: 0 0 1rem;
+            color: var(--text-primary);
         }
         .blog-hero p {
-            text-align: center;
-            color: var(--text-secondary);
+            color: var(--blog-muted);
             font-size: 1.125rem;
-            max-width: 600px;
+            line-height: 1.6;
+            max-width: 640px;
             margin: 0 auto;
+        }
+
+        .blog-section {
+            padding: 4rem 0 6rem;
+        }
+
+        /* Featured post (first card, hero-sized) */
+        .blog-featured {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+            padding: 3rem;
+            margin-bottom: 4rem;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--blog-soft) 0%, #FFFFFF 100%);
+            border: 1px solid var(--blog-line);
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .blog-featured:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+        }
+        .blog-featured-visual {
+            aspect-ratio: 4 / 3;
+            border-radius: 12px;
+            background:
+                linear-gradient(135deg, #FFE4E9 0%, #FFD4DD 50%, #FFC9D2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5rem;
+            box-shadow: 0 8px 24px rgba(255, 56, 92, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .blog-featured-visual::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.4), transparent 60%);
+        }
+        .blog-featured-content {
+            padding: 0;
+        }
+        .blog-tag {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--blog-accent);
+            margin-bottom: 1rem;
+        }
+        .blog-featured-title {
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: clamp(1.75rem, 3vw, 2.5rem);
+            font-weight: 500;
+            line-height: 1.2;
+            letter-spacing: -0.015em;
+            margin: 0 0 1rem;
+            color: var(--text-primary);
+        }
+        .blog-featured-excerpt {
+            color: var(--blog-muted);
+            font-size: 1.0625rem;
+            line-height: 1.65;
+            margin: 0 0 1.5rem;
+        }
+        .blog-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+            color: var(--blog-muted);
+            margin-bottom: 1rem;
+        }
+        .blog-meta-dot {
+            width: 3px;
+            height: 3px;
+            background: var(--blog-muted);
+            border-radius: 50%;
+        }
+        .blog-read-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1.5px solid var(--text-primary);
+            padding-bottom: 2px;
+        }
+        .blog-read-cta-arrow {
+            transition: transform 0.2s ease;
+        }
+        .blog-featured:hover .blog-read-cta-arrow,
+        .blog-card:hover .blog-read-cta-arrow {
+            transform: translateX(4px);
+        }
+
+        /* Standard post grid */
+        .blog-grid-heading {
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin: 0 0 2rem;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
         }
         .blog-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 2rem;
-            margin-top: 3rem;
         }
         .blog-card {
             background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border: 1px solid var(--blog-line);
+            border-radius: 14px;
             overflow: hidden;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
             text-decoration: none;
             color: inherit;
-            display: block;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
         }
         .blog-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+            border-color: #D4D4D4;
         }
         .blog-card-image {
-            width: 100%;
-            height: 200px;
-            background: var(--bg-secondary);
+            aspect-ratio: 16 / 10;
+            background: linear-gradient(135deg, #F5F5F2 0%, #ECECE6 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 3rem;
-            color: var(--text-light);
+            position: relative;
+            overflow: hidden;
+        }
+        .blog-card-image.variant-pink {
+            background: linear-gradient(135deg, #FFE4E9 0%, #FFD4DD 100%);
+        }
+        .blog-card-image.variant-mint {
+            background: linear-gradient(135deg, #E4F4ED 0%, #D4ECDF 100%);
+        }
+        .blog-card-image.variant-cream {
+            background: linear-gradient(135deg, #FAF3E7 0%, #F2E9D5 100%);
+        }
+        .blog-card-image::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 70% 25%, rgba(255, 255, 255, 0.35), transparent 55%);
         }
         .blog-card-content {
-            padding: 1.5rem;
-        }
-        .blog-card-date {
-            font-size: 0.875rem;
-            color: var(--text-light);
-            margin-bottom: 0.5rem;
+            padding: 1.75rem 1.75rem 2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
         .blog-card-title {
-            font-size: 1.25rem;
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: 1.375rem;
             font-weight: 500;
-            margin-bottom: 0.75rem;
-            line-height: 1.4;
+            line-height: 1.3;
+            letter-spacing: -0.01em;
+            margin: 0 0 0.75rem;
+            color: var(--text-primary);
         }
         .blog-card-excerpt {
-            color: var(--text-secondary);
+            color: var(--blog-muted);
             font-size: 0.9375rem;
             line-height: 1.6;
-            margin-bottom: 1rem;
+            margin: 0 0 1.5rem;
+            flex: 1;
         }
-        .blog-card-read-more {
-            color: var(--primary);
-            font-size: 0.9375rem;
+        .blog-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: var(--blog-muted);
+        }
+        .blog-card-arrow {
+            font-size: 1.125rem;
+            color: var(--text-primary);
+            transition: transform 0.2s ease;
+        }
+        .blog-card:hover .blog-card-arrow {
+            transform: translateX(4px);
+        }
+
+        /* Newsletter / CTA strip */
+        .blog-cta-strip {
+            margin-top: 5rem;
+            padding: 3rem 2.5rem;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #1A1A1A 0%, #2C2C2C 100%);
+            color: #FFFFFF;
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 2.5rem;
+            align-items: center;
+        }
+        .blog-cta-strip h3 {
+            font-family: 'Fraunces', Georgia, serif;
+            font-size: 1.875rem;
             font-weight: 500;
+            line-height: 1.2;
+            letter-spacing: -0.015em;
+            margin: 0 0 0.75rem;
+            color: #FFFFFF;
+        }
+        .blog-cta-strip p {
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 1.0625rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+        .blog-cta-strip-action {
+            text-align: right;
+        }
+        .blog-cta-strip-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--blog-accent);
+            color: #FFFFFF;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 0.95rem 1.75rem;
+            border-radius: 8px;
             text-decoration: none;
+            transition: transform 0.2s ease, background 0.2s ease;
         }
-        .blog-card-read-more:hover {
-            text-decoration: underline;
+        .blog-cta-strip-btn:hover {
+            transform: translateY(-2px);
+            background: #E5314F;
         }
-        .blog-section {
-            padding: 2rem 0 4rem;
+
+        @media (max-width: 768px) {
+            .blog-hero { padding: 3rem 0 2rem; }
+            .blog-section { padding: 2.5rem 0 4rem; }
+            .blog-featured {
+                grid-template-columns: 1fr;
+                padding: 1.5rem;
+                gap: 1.5rem;
+            }
+            .blog-cta-strip {
+                grid-template-columns: 1fr;
+                padding: 2rem 1.5rem;
+                text-align: center;
+            }
+            .blog-cta-strip-action { text-align: center; }
         }
     </style>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
 </head>
-<body class="home-page">
+<body class="home-page blog-index">
     {% if gtm_container_id %}
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_container_id }}"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     {% endif %}
-    
+
     <nav class="navbar navbar-minimal">
         <div class="nav-container">
             <div class="nav-brand">
@@ -154,50 +379,78 @@
         </div>
     </nav>
 
-    <div class="container">
     <section class="blog-hero">
         <div class="container-narrow">
-            <h1>Blog & Resources</h1>
-            <p>Expert tips, guides, and insights to help you create stunning property photos and increase bookings</p>
+            <span class="blog-hero-eyebrow">The Elevance Journal</span>
+            <h1>Photography insights for hosts who care about bookings.</h1>
+            <p>Tactical guides, before/after breakdowns, and field notes from a team that's looked at thousands of listing galleries.</p>
         </div>
     </section>
 
     <section class="blog-section">
         <div class="container-narrow">
-            <div class="blog-grid">
-                <a href="/blog/10-tips-for-better-airbnb-photos" class="blog-card">
-                    <div class="blog-card-image">📸</div>
-                    <div class="blog-card-content">
-                        <div class="blog-card-date">December 2025</div>
-                        <h3 class="blog-card-title">10 Tips for Better Airbnb Photos</h3>
-                        <p class="blog-card-excerpt">Discover proven strategies to capture stunning photos that attract more guests and increase your booking rate. Learn lighting, composition, and staging techniques.</p>
-                        <span class="blog-card-read-more">Read More →</span>
+
+            <!-- Featured -->
+            <a href="/blog/10-tips-for-better-airbnb-photos" class="blog-featured">
+                <div class="blog-featured-visual">📸</div>
+                <div class="blog-featured-content">
+                    <span class="blog-tag">Featured · Photography</span>
+                    <h2 class="blog-featured-title">10 Tips for Better Airbnb Photos</h2>
+                    <div class="blog-meta">
+                        <span>December 2025</span>
+                        <span class="blog-meta-dot"></span>
+                        <span>8 min read</span>
                     </div>
-                </a>
+                    <p class="blog-featured-excerpt">Discover proven strategies to capture stunning photos that attract more guests and increase your booking rate. Lighting, composition, staging, and the small details that separate a $90 night from a $180 one.</p>
+                    <span class="blog-read-cta">Read the guide <span class="blog-read-cta-arrow">→</span></span>
+                </div>
+            </a>
+
+            <!-- Standard grid -->
+            <h3 class="blog-grid-heading">More guides</h3>
+            <div class="blog-grid">
 
                 <a href="/blog/how-to-increase-bookings-with-professional-photos" class="blog-card">
-                    <div class="blog-card-image">📈</div>
+                    <div class="blog-card-image variant-mint">📈</div>
                     <div class="blog-card-content">
-                        <div class="blog-card-date">December 2025</div>
+                        <span class="blog-tag">Strategy</span>
                         <h3 class="blog-card-title">How to Increase Bookings with Professional Photos</h3>
-                        <p class="blog-card-excerpt">Learn how professional photo enhancement can boost your bookings by up to 40%. Real statistics and case studies from successful hosts.</p>
-                        <span class="blog-card-read-more">Read More →</span>
+                        <p class="blog-card-excerpt">Why pro-grade photos lift bookings up to 40%. Real stats and case studies from successful hosts.</p>
+                        <div class="blog-card-footer">
+                            <span>Dec 2025 · 6 min read</span>
+                            <span class="blog-card-arrow">→</span>
+                        </div>
                     </div>
                 </a>
 
                 <a href="/blog/before-after-airbnb-photo-transformations" class="blog-card">
-                    <div class="blog-card-image">✨</div>
+                    <div class="blog-card-image variant-pink">✨</div>
                     <div class="blog-card-content">
-                        <div class="blog-card-date">December 2025</div>
+                        <span class="blog-tag">Examples</span>
                         <h3 class="blog-card-title">Before/After: 20 Airbnb Photo Transformations</h3>
-                        <p class="blog-card-excerpt">See real examples of how AI photo enhancement transformed ordinary property photos into stunning, booking-winning images.</p>
-                        <span class="blog-card-read-more">Read More →</span>
+                        <p class="blog-card-excerpt">Real examples showing how AI enhancement turns ordinary phone shots into booking-winning images.</p>
+                        <div class="blog-card-footer">
+                            <span>Dec 2025 · 5 min read</span>
+                            <span class="blog-card-arrow">→</span>
+                        </div>
                     </div>
                 </a>
+
             </div>
+
+            <!-- CTA strip -->
+            <div class="blog-cta-strip">
+                <div>
+                    <h3>Want better photos in 30 seconds?</h3>
+                    <p>Drop a phone shot. Get back the version a $400 photographer would have produced. First three photos free.</p>
+                </div>
+                <div class="blog-cta-strip-action">
+                    <a href="/#uploadSection" class="blog-cta-strip-btn">Try Elevance free →</a>
+                </div>
+            </div>
+
         </div>
     </section>
-    </div>
 
     <footer class="home-footer">
         <div class="container-narrow">
@@ -236,10 +489,9 @@
             </div>
         </div>
     </footer>
-    
+
     {% if gtm_container_id %}
-    <script src="static/js/analytics.js"></script>
+    <script src="/static/js/analytics.js"></script>
     {% endif %}
 </body>
 </html>
-
