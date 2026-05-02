@@ -875,6 +875,54 @@ def sitemap():
             'priority': '0.7'
         },
         {
+            'loc': 'https://elevance.art/blog/how-many-photos-airbnb-listing',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/airbnb-photo-size-requirements',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/best-time-to-photograph-airbnb',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/iphone-airbnb-photography',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/why-airbnb-not-getting-bookings',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/stage-airbnb-for-photos',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/sky-replacement-real-estate',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/vrbo-vs-airbnb-photography',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
             'loc': 'https://elevance.art/terms',
             'lastmod': datetime.now().strftime('%Y-%m-%d'),
             'changefreq': 'yearly',
@@ -982,6 +1030,38 @@ def blog_increase_bookings():
 @app.route('/blog/before-after-airbnb-photo-transformations')
 def blog_before_after():
     return render_template('blog_before_after.html')
+
+@app.route('/blog/how-many-photos-airbnb-listing')
+def blog_how_many_photos():
+    return render_template('blog_how_many_photos.html')
+
+@app.route('/blog/airbnb-photo-size-requirements')
+def blog_photo_size_requirements():
+    return render_template('blog_photo_size_requirements.html')
+
+@app.route('/blog/best-time-to-photograph-airbnb')
+def blog_best_time_to_photograph():
+    return render_template('blog_best_time_to_photograph.html')
+
+@app.route('/blog/iphone-airbnb-photography')
+def blog_iphone_airbnb_photography():
+    return render_template('blog_iphone_airbnb_photography.html')
+
+@app.route('/blog/why-airbnb-not-getting-bookings')
+def blog_why_not_getting_bookings():
+    return render_template('blog_why_not_getting_bookings.html')
+
+@app.route('/blog/stage-airbnb-for-photos')
+def blog_stage_airbnb_for_photos():
+    return render_template('blog_stage_airbnb_for_photos.html')
+
+@app.route('/blog/sky-replacement-real-estate')
+def blog_sky_replacement_real_estate():
+    return render_template('blog_sky_replacement_real_estate.html')
+
+@app.route('/blog/vrbo-vs-airbnb-photography')
+def blog_vrbo_vs_airbnb_photography():
+    return render_template('blog_vrbo_vs_airbnb_photography.html')
 
 @app.route('/api/convert-to-night', methods=['POST'])
 def convert_to_night():
