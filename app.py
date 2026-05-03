@@ -13,12 +13,13 @@ import hashlib
 from datetime import datetime
 from io import BytesIO
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import RequestEntityTooLarge
 from dotenv import load_dotenv
 from image_enhancer import ImageEnhancer
 from models import db, User, EnhancedImage, Payment
 import stripe
 from sqlalchemy.exc import OperationalError
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import math
 import uuid
 
@@ -132,6 +133,13 @@ except Exception as e:
 app = Flask(__name__, static_folder='static', template_folder='.')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 
+MAX_UPLOAD_MB = int(os.getenv('MAX_UPLOAD_MB', '40'))
+IMAGE_MAX_EDGE = int(os.getenv('IMAGE_MAX_EDGE', '4096'))
+IMAGE_JPEG_QUALITY = int(os.getenv('IMAGE_JPEG_QUALITY', '92'))
+# Re-normalize JPEG quality into a safe range for Pillow.
+IMAGE_JPEG_QUALITY = max(60, min(98, IMAGE_JPEG_QUALITY))
+app.config['MAX_CONTENT_LENGTH'] = max(1, MAX_UPLOAD_MB) * 1024 * 1024
+
 # Database configuration - supports both PostgreSQL and SQLite
 # Render provides DATABASE_URL with postgres:// but SQLAlchemy needs postgresql://
 database_url = os.getenv('DATABASE_URL', 'sqlite:///airbnb_enhancer.db')
@@ -233,6 +241,13 @@ ANONYMOUS_TRIAL_LIMIT = int(os.getenv('ANONYMOUS_TRIAL_LIMIT', '5'))
 ANONYMOUS_BROWSER_COOKIE = 'anon_browser_id'
 
 CORS(app)
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_request_entity_too_large(_exc):
+    return jsonify({
+        'error': f'File too large. Maximum upload size is {MAX_UPLOAD_MB} MB per request.'
+    }), 413
 
 # Make GTM_CONTAINER_ID and GA4_MEASUREMENT_ID available to all templates
 @app.context_processor
@@ -341,6 +356,64 @@ def attach_anonymous_browser_cookie(response, browser_id, cookie_created):
             secure=request.is_secure
         )
     return response
+
+
+def normalize_saved_upload(original_path: str):
+    """Downscale or recompress oversized uploads before AI processing.
+
+    Returns (path_for_processing, basename_for_records). Leaves small JPEGs untouched.
+    """
+    basename_orig = os.path.basename(original_path)
+    try:
+        file_size = os.path.getsize(original_path)
+        ext = os.path.splitext(original_path)[1].lower()
+        large_file = file_size > 15 * 1024 * 1024
+
+        with Image.open(original_path) as img:
+            oriented = ImageOps.exif_transpose(img)
+            w, h = oriented.size
+            max_dim = max(w, h)
+
+            needs_work = (
+                max_dim > IMAGE_MAX_EDGE
+                or ext not in ('.jpg', '.jpeg')
+                or large_file
+            )
+            if not needs_work:
+                return original_path, basename_orig
+
+            im = oriented
+            if im.mode == 'RGBA':
+                rgb = Image.new('RGB', im.size, (255, 255, 255))
+                rgb.paste(im, mask=im.split()[3])
+                im = rgb
+            elif im.mode != 'RGB':
+                im = im.convert('RGB')
+
+            if max(im.size) > IMAGE_MAX_EDGE:
+                im.thumbnail((IMAGE_MAX_EDGE, IMAGE_MAX_EDGE), Image.Resampling.LANCZOS)
+                logger.info(
+                    "Normalized upload dimensions to max edge %s (was max dimension %s)",
+                    IMAGE_MAX_EDGE,
+                    max_dim,
+                )
+
+            base, _ = os.path.splitext(original_path)
+            normalized_path = base + '_work.jpg'
+            im.save(normalized_path, 'JPEG', quality=IMAGE_JPEG_QUALITY, optimize=True)
+
+        if normalized_path != original_path:
+            try:
+                os.remove(original_path)
+            except OSError as rm_err:
+                logger.warning('Could not remove pre-normalize upload %s: %s', original_path, rm_err)
+
+        return normalized_path, os.path.basename(normalized_path)
+
+    except Exception as exc:
+        logger.warning('Upload normalize skipped; using original (%s)', exc)
+        return original_path, basename_orig
+
 
 # Create database tables with error handling
 with app.app_context():
@@ -1097,12 +1170,13 @@ def convert_to_night():
         filename = secure_filename(file.filename)
         original_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(original_path)
+        processed_path, _ = normalize_saved_upload(original_path)
         
         # Convert to night
-        night_path, conversion_info = enhancer.convert_to_night(original_path, filename)
+        night_path, conversion_info = enhancer.convert_to_night(processed_path, filename)
         
         # Get file sizes
-        original_file_size = os.path.getsize(original_path)
+        original_file_size = os.path.getsize(processed_path)
         night_file_size = os.path.getsize(night_path)
         
         # Get night filename from path
@@ -1112,7 +1186,7 @@ def convert_to_night():
         original_image_data = None
         night_image_data = None
         try:
-            with open(original_path, 'rb') as f:
+            with open(processed_path, 'rb') as f:
                 original_image_data = base64.b64encode(f.read()).decode('utf-8')
             with open(night_path, 'rb') as f:
                 night_image_data = base64.b64encode(f.read()).decode('utf-8')
@@ -1130,7 +1204,7 @@ def convert_to_night():
             enhanced_image_record = EnhancedImage(
                 user_id=user_id,
                 original_filename=filename,
-                original_path=original_path,
+                original_path=processed_path,
                 original_file_size=original_file_size,
                 enhanced_filename=night_filename,
                 enhanced_path=night_path,
@@ -1195,9 +1269,9 @@ def convert_to_night():
                 logger.error(f"User ID: {current_user.id}")
             
             # Clean up files if database save failed
-            if os.path.exists(original_path):
+            if os.path.exists(processed_path):
                 try:
-                    os.remove(original_path)
+                    os.remove(processed_path)
                 except Exception as cleanup_error:
                     logger.warning(f"Failed to cleanup original file: {cleanup_error}")
             if os.path.exists(night_path):
@@ -1224,20 +1298,23 @@ def convert_to_night():
         original_url = None
         night_url = None
         
+        proc_ext = os.path.splitext(processed_path)[1].lower().lstrip('.') or 'jpeg'
+        proc_mime = 'jpeg' if proc_ext in ('jpg', 'jpeg') else proc_ext
+        
         try:
-            if os.path.exists(original_path):
-                with open(original_path, 'rb') as f:
+            if os.path.exists(processed_path):
+                with open(processed_path, 'rb') as f:
                     original_data = base64.b64encode(f.read()).decode('utf-8')
-                    original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{original_data}"
+                    original_url = f"data:image/{proc_mime};base64,{original_data}"
             elif enhanced_image_record.original_image_data:
                 # Use database-stored image
-                original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{enhanced_image_record.original_image_data}"
+                original_url = f"data:image/{proc_mime};base64,{enhanced_image_record.original_image_data}"
                 logger.info("Using database-stored original image for response")
         except Exception as e:
             logger.error(f"Error reading original image for response: {e}")
             # Try database fallback
             if enhanced_image_record.original_image_data:
-                original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{enhanced_image_record.original_image_data}"
+                original_url = f"data:image/{proc_mime};base64,{enhanced_image_record.original_image_data}"
         
         try:
             if os.path.exists(night_path):
@@ -1327,17 +1404,18 @@ def enhance_image():
         filename = secure_filename(file.filename)
         original_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(original_path)
+        processed_path, _ = normalize_saved_upload(original_path)
         
         # Enhance the image with user preferences
         enhanced_path, enhancements = enhancer.enhance_image(
-            original_path, 
+            processed_path, 
             filename,
             change_intensity=change_intensity,
             detail_level=detail_level
         )
         
         # Get file sizes
-        original_file_size = os.path.getsize(original_path)
+        original_file_size = os.path.getsize(processed_path)
         enhanced_file_size = os.path.getsize(enhanced_path)
         
         # Get enhanced filename from path
@@ -1347,7 +1425,7 @@ def enhance_image():
         original_image_data = None
         enhanced_image_data = None
         try:
-            with open(original_path, 'rb') as f:
+            with open(processed_path, 'rb') as f:
                 original_image_data = base64.b64encode(f.read()).decode('utf-8')
             with open(enhanced_path, 'rb') as f:
                 enhanced_image_data = base64.b64encode(f.read()).decode('utf-8')
@@ -1365,7 +1443,7 @@ def enhance_image():
             enhanced_image_record = EnhancedImage(
                 user_id=user_id,
                 original_filename=filename,
-                original_path=original_path,
+                original_path=processed_path,
                 original_file_size=original_file_size,
                 enhanced_filename=enhanced_filename,
                 enhanced_path=enhanced_path,
@@ -1426,9 +1504,9 @@ def enhance_image():
                 logger.error(f"User ID: {current_user.id}")
             
             # Clean up files if database save failed
-            if os.path.exists(original_path):
+            if os.path.exists(processed_path):
                 try:
-                    os.remove(original_path)
+                    os.remove(processed_path)
                 except Exception as cleanup_error:
                     logger.warning(f"Failed to cleanup original file: {cleanup_error}")
             if os.path.exists(enhanced_path):
@@ -1455,20 +1533,23 @@ def enhance_image():
         original_url = None
         enhanced_url = None
         
+        proc_ext = os.path.splitext(processed_path)[1].lower().lstrip('.') or 'jpeg'
+        proc_mime = 'jpeg' if proc_ext in ('jpg', 'jpeg') else proc_ext
+        
         try:
-            if os.path.exists(original_path):
-                with open(original_path, 'rb') as f:
+            if os.path.exists(processed_path):
+                with open(processed_path, 'rb') as f:
                     original_data = base64.b64encode(f.read()).decode('utf-8')
-                    original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{original_data}"
+                    original_url = f"data:image/{proc_mime};base64,{original_data}"
             elif enhanced_image_record.original_image_data:
                 # Use database-stored image
-                original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{enhanced_image_record.original_image_data}"
+                original_url = f"data:image/{proc_mime};base64,{enhanced_image_record.original_image_data}"
                 logger.info("Using database-stored original image for response")
         except Exception as e:
             logger.error(f"Error reading original image for response: {e}")
             # Try database fallback
             if enhanced_image_record.original_image_data:
-                original_url = f"data:image/{filename.rsplit('.', 1)[1] if '.' in filename else 'jpeg'};base64,{enhanced_image_record.original_image_data}"
+                original_url = f"data:image/{proc_mime};base64,{enhanced_image_record.original_image_data}"
         
         try:
             if os.path.exists(enhanced_path):

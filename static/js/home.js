@@ -458,6 +458,13 @@ async function handleFiles(files) {
             continue;
         }
         try {
+            updateProgress(progressItem, 'Preparing image...', 12);
+
+            const uploadFile =
+                typeof preprocessUploadFile === 'function'
+                    ? await preprocessUploadFile(file)
+                    : file;
+
             updateProgress(progressItem, 'Uploading...', 20);
             
             // Get feature type
@@ -465,7 +472,7 @@ async function handleFiles(files) {
             
             // Upload and process the image
             const formData = new FormData();
-            formData.append('image', file);
+            formData.append('image', uploadFile);
             
             // Determine which endpoint to use
             let endpoint = '/api/enhance';
