@@ -1044,6 +1044,36 @@ def sitemap():
             'priority': '0.7'
         },
         {
+            'loc': 'https://elevance.art/airbnb-photo-editing',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'weekly',
+            'priority': '0.9'
+        },
+        {
+            'loc': 'https://elevance.art/real-estate-photo-enhancement',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'weekly',
+            'priority': '0.9'
+        },
+        {
+            'loc': 'https://elevance.art/compare/boxbrownie-alternative',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.8'
+        },
+        {
+            'loc': 'https://elevance.art/blog/airbnb-photographer-cost-vs-ai-enhancement',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
+            'loc': 'https://elevance.art/blog/airbnb-photo-mistakes',
+            'lastmod': datetime.now().strftime('%Y-%m-%d'),
+            'changefreq': 'monthly',
+            'priority': '0.7'
+        },
+        {
             'loc': 'https://elevance.art/terms',
             'lastmod': datetime.now().strftime('%Y-%m-%d'),
             'changefreq': 'yearly',
@@ -1134,6 +1164,27 @@ def refund():
 @app.route('/cookies')
 def cookies():
     return render_template('cookies.html')
+
+# Landing / comparison pages
+@app.route('/airbnb-photo-editing')
+def landing_airbnb_photo_editing():
+    return render_template('landing_airbnb_photo_editing.html')
+
+@app.route('/real-estate-photo-enhancement')
+def landing_real_estate_photo_enhancement():
+    return render_template('landing_real_estate_photo_enhancement.html')
+
+@app.route('/compare/boxbrownie-alternative')
+def compare_boxbrownie():
+    return render_template('compare_boxbrownie.html')
+
+@app.route('/blog/airbnb-photographer-cost-vs-ai-enhancement')
+def blog_photographer_vs_ai():
+    return render_template('blog_photographer_vs_ai.html')
+
+@app.route('/blog/airbnb-photo-mistakes')
+def blog_photo_mistakes():
+    return render_template('blog_photo_mistakes.html')
 
 # Blog Routes
 @app.route('/blog')
