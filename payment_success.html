@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Successful - Elevance AI</title>
     <link rel="stylesheet" href="static/css/style.css">
+    <!-- Google Analytics (events only; page_view is sent by GTM) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QWRC0ENT56"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-QWRC0ENT56', {'send_page_view': false{% if ga_internal %}, 'traffic_type': 'internal'{% endif %}});
+        {% for ev in ga_events %}gtag('event', {{ ev.name|tojson }}, {{ ev.params|tojson }});
+        {% endfor %}
+    </script>
     {% if gtm_container_id %}
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':

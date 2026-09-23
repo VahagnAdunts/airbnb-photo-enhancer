@@ -11,7 +11,9 @@
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', 'G-QWRC0ENT56');
+        gtag('config', 'G-QWRC0ENT56'{% if ga_internal %}, {'traffic_type': 'internal'}{% endif %});
+        {% for ev in ga_events %}gtag('event', {{ ev.name|tojson }}, {{ ev.params|tojson }});
+        {% endfor %}
     </script>
     {% if gtm_container_id %}
     <!-- Google Tag Manager -->

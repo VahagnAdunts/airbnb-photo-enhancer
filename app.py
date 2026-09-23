@@ -252,10 +252,53 @@ def handle_request_entity_too_large(_exc):
 # Make GTM_CONTAINER_ID and GA4_MEASUREMENT_ID available to all templates
 @app.context_processor
 def inject_gtm_container_id():
+    # One-shot GA4 events queued by the backend (sign_up, purchase); fired once on the next rendered page
+    try:
+        ga_events = session.pop('ga_events', []) or []
+    except Exception:
+        ga_events = []
     return dict(
         gtm_container_id=app.config['GTM_CONTAINER_ID'],
-        ga4_measurement_id=app.config['GA4_MEASUREMENT_ID']
+        ga4_measurement_id=app.config['GA4_MEASUREMENT_ID'],
+        ga_events=ga_events,
+        ga_internal=is_internal_user()
     )
+
+
+# Accounts whose activity should be excluded from Google Analytics (owner, team, test accounts)
+INTERNAL_EMAILS = {
+    e.strip().lower() for e in os.getenv(
+        'INTERNAL_EMAILS',
+        'vadunts@gmail.com,vahagndubai@gmail.com,vahagn.adunc.1995@gmail.com,'
+        'vanik.adunts2@gmail.com,arami.vhr@gmail.com,elevance.art@gmail.com'
+    ).split(',') if e.strip()
+}
+
+
+def is_internal_user():
+    """True for admins, free-access accounts and known owner/test emails."""
+    try:
+        if not current_user.is_authenticated:
+            return False
+        email = (current_user.email or '').lower()
+        return bool(
+            getattr(current_user, 'is_admin', False)
+            or getattr(current_user, 'has_free_access', False)
+            or email in INTERNAL_EMAILS
+            or email.startswith('test')
+        )
+    except Exception:
+        return False
+
+
+def queue_ga_event(name, params=None):
+    """Queue a GA4 event to be sent from the browser on the next rendered page."""
+    try:
+        events = session.get('ga_events', []) or []
+        events.append({'name': name, 'params': params or {}})
+        session['ga_events'] = events
+    except Exception as e:
+        logger.warning(f"Could not queue GA event {name}: {e}")
 
 # Initialize extensions
 db.init_app(app)
@@ -655,6 +698,7 @@ def signup():
                 return jsonify({'error': 'Failed to create account. Please try again.'}), 500
             
             login_user(user, remember=True)
+            queue_ga_event('sign_up', {'method': 'email'})
             
             # Link any recent photos (created within 1 hour) with user_id=None to this user
             try:
@@ -745,6 +789,7 @@ def google_callback():
         # Database operations with retry logic for connection issues
         max_retries = 3
         retry_count = 0
+        is_new_google_user = False
         
         while retry_count < max_retries:
             try:
@@ -780,6 +825,7 @@ def google_callback():
                     )
                     db.session.add(user)
                     db.session.commit()
+                    is_new_google_user = True
                     logger.info(f"New Google OAuth user created: {username} ({email})")
                     break
                 
@@ -808,6 +854,8 @@ def google_callback():
         # Log the user in
         login_user(user, remember=True)
         logger.info(f"User {user.username} logged in via Google OAuth")
+        if is_new_google_user:
+            queue_ga_event('sign_up', {'method': 'google'})
         
         # Link any recent photos (created within 1 hour) with user_id=None to this user
         try:
@@ -2335,6 +2383,20 @@ def payment_success():
             
             # Store session_id in session for dashboard to check
             session['payment_success_session_id'] = session_id
+            
+            # GA4 purchase event (GA4 de-duplicates repeat purchases with the same transaction_id)
+            if payment and payment.status == 'completed' and payment.user_id == current_user.id:
+                queue_ga_event('purchase', {
+                    'transaction_id': session_id,
+                    'value': round((payment.amount or 0) / 100.0, 2),
+                    'currency': (payment.currency or 'usd').upper(),
+                    'items': [{
+                        'item_id': 'photo_enhancement',
+                        'item_name': 'Photo enhancement',
+                        'price': round((payment.amount or 0) / 100.0 / max(payment.photo_count or 1, 1), 2),
+                        'quantity': payment.photo_count or 1
+                    }]
+                })
             
             return render_template('payment_success.html', 
                                  session_id=session_id,
