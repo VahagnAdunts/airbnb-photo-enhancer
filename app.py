@@ -175,12 +175,15 @@ if database_url.startswith('postgresql://'):
         parsed.fragment
     ))
     logger.info("Configured PostgreSQL with SSL and connection settings")
+    # Pin the driver explicitly: SQLAlchemy 2.1+ defaults postgresql:// to psycopg (v3),
+    # but we ship psycopg2-binary.
+    database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Connection pool settings for PostgreSQL
-if database_url.startswith('postgresql://'):
+if database_url.startswith('postgresql'):
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_pre_ping': True,  # Verify connections before using (handles connection drops)
         'pool_recycle': 300,    # Recycle connections after 5 minutes
