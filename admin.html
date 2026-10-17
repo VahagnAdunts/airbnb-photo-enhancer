@@ -275,6 +275,7 @@
                         <th>Signup Method</th>
                         <th>Created At</th>
                         <th>Photos</th>
+                        <th>Wanted</th>
                         <th>Payments</th>
                         <th>Total Paid</th>
                         <th>Free Access</th>
@@ -296,6 +297,13 @@
                             </td>
                             <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else 'N/A' }}</td>
                             <td>{{ user.photo_count }}</td>
+                            <td>
+                                {% if user.wanted_count > 0 %}
+                                    <a href="{{ url_for('admin_user_photos', user_id=user.id, show='wanted') }}" class="badge" style="background: #f59e0b; color: white; text-decoration: none;" title="Photos selected for download">{{ user.wanted_count }}</a>
+                                {% else %}
+                                    <span style="color: var(--text-secondary);">0</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if user.payment_info.count > 0 %}
                                     <span class="badge" style="background: #10b981; color: white;">{{ user.payment_info.count }}</span>
@@ -321,7 +329,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            <td colspan="10" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                                 {% if search_query %}
                                     No users found matching "{{ search_query }}"
                                 {% else %}

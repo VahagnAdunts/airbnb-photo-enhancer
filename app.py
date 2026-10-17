@@ -522,6 +522,21 @@ with app.app_context():
                             conn.execute(text('ALTER TABLE "enhanced_image" ADD COLUMN conversion_type VARCHAR(20) DEFAULT \'enhancement\''))
                         conn.commit()
                     logger.info("Added conversion_type column")
+                
+                if 'download_request_count' not in columns:
+                    logger.info("Adding download_request_count column to enhanced_image table...")
+                    with db.engine.connect() as conn:
+                        conn.execute(text('ALTER TABLE enhanced_image ADD COLUMN download_request_count INTEGER DEFAULT 0'))
+                        conn.commit()
+                    logger.info("Added download_request_count column")
+                
+                if 'last_download_requested_at' not in columns:
+                    logger.info("Adding last_download_requested_at column to enhanced_image table...")
+                    with db.engine.connect() as conn:
+                        col_type = 'DATETIME' if db_uri.startswith('sqlite') else 'TIMESTAMP'
+                        conn.execute(text(f'ALTER TABLE enhanced_image ADD COLUMN last_download_requested_at {col_type}'))
+                        conn.commit()
+                    logger.info("Added last_download_requested_at column")
             
             # Check if user table exists and add has_free_access column if needed
             if 'user' in inspector.get_table_names():
@@ -2347,6 +2362,23 @@ def check_payment_status():
         if not photo_ids:
             return jsonify({'error': 'No photos specified'}), 400
         
+        # Record download intent: the user selected these photos and pressed Download.
+        # Skipped for session_id lookups (returning from Stripe) to avoid double counting.
+        if not session_id:
+            try:
+                now = datetime.utcnow()
+                requested = EnhancedImage.query.filter(
+                    EnhancedImage.id.in_(photo_ids),
+                    EnhancedImage.user_id == current_user.id
+                ).all()
+                for photo in requested:
+                    photo.download_request_count = (photo.download_request_count or 0) + 1
+                    photo.last_download_requested_at = now
+                db.session.commit()
+            except Exception as track_error:
+                db.session.rollback()
+                logger.warning(f"Could not record download intent: {track_error}")
+        
         # Check if user has free access - grant access immediately
         if current_user.has_free_access:
             logger.info(f"User {current_user.id} has free access - granting download permission")
@@ -2697,6 +2729,17 @@ def admin_dashboard():
             
             for user_id, photo_count in photo_stats:
                 photos_by_user[user_id] = photo_count or 0
+            
+            # Photos each user selected and pressed Download on
+            wanted_by_user = dict(db.session.query(
+                EnhancedImage.user_id,
+                func.count(EnhancedImage.id)
+            ).filter(
+                EnhancedImage.user_id.in_(user_ids),
+                EnhancedImage.download_request_count > 0
+            ).group_by(EnhancedImage.user_id).all())
+        else:
+            wanted_by_user = {}
         
         # Attach aggregated info to users
         for user in users:
@@ -2707,6 +2750,7 @@ def admin_dashboard():
             })
             # photo_count reflects real EnhancedImage rows; fall back to images_processed
             user.photo_count = photos_by_user.get(user.id, user.images_processed or 0)
+            user.wanted_count = wanted_by_user.get(user.id, 0)
         
         return render_template('admin.html',
                              users=users,
@@ -2752,9 +2796,34 @@ def admin_user_photos(user_id):
         page = request.args.get('page', 1, type=int)
         per_page = 20  # Photos per page
         
+        show = request.args.get('show', 'all')  # 'all' or 'wanted'
+        
         # Query photos for this user
         photos_query = EnhancedImage.query.filter_by(user_id=user_id)
-        photos_query = photos_query.order_by(EnhancedImage.created_at.desc())
+        if show == 'wanted':
+            photos_query = photos_query.filter(EnhancedImage.download_request_count > 0)
+            photos_query = photos_query.order_by(EnhancedImage.last_download_requested_at.desc())
+        else:
+            photos_query = photos_query.order_by(EnhancedImage.created_at.desc())
+        
+        # Photo IDs covered by completed payments (paid or comped)
+        paid_photo_ids = set()
+        for p in Payment.query.filter_by(user_id=user_id, status='completed').all():
+            if p.photo_ids:
+                try:
+                    paid_photo_ids.update(json.loads(p.photo_ids))
+                except Exception:
+                    pass
+        
+        wanted_count = EnhancedImage.query.filter(
+            EnhancedImage.user_id == user_id,
+            EnhancedImage.download_request_count > 0
+        ).count()
+        wanted_unpaid_count = EnhancedImage.query.filter(
+            EnhancedImage.user_id == user_id,
+            EnhancedImage.download_request_count > 0,
+            ~EnhancedImage.id.in_(paid_photo_ids) if paid_photo_ids else db.true()
+        ).count()
         
         # Paginate
         pagination = photos_query.paginate(page=page, per_page=per_page, error_out=False)
@@ -2771,7 +2840,11 @@ def admin_user_photos(user_id):
         return render_template('admin_user_photos.html',
                              user=user,
                              photos=valid_photos,
-                             pagination=pagination)
+                             pagination=pagination,
+                             show=show,
+                             paid_photo_ids=paid_photo_ids,
+                             wanted_count=wanted_count,
+                             wanted_unpaid_count=wanted_unpaid_count)
     except Exception as e:
         logger.error(f"Error loading user photos for admin: {e}", exc_info=True)
         flash('An error occurred while loading user photos.', 'error')

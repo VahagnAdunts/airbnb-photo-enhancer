@@ -51,6 +51,10 @@ class EnhancedImage(db.Model):
     enhancement_settings = db.Column(db.Text)  # JSON string of enhancement details
     ai_analysis = db.Column(db.Text)  # AI analysis/response from AI service
     
+    # Download intent tracking: incremented each time the user selects this photo and presses Download
+    download_request_count = db.Column(db.Integer, default=0, nullable=True)
+    last_download_requested_at = db.Column(db.DateTime, nullable=True)
+    
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
