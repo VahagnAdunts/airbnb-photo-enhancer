@@ -311,6 +311,16 @@
                         {% endif %}
                     </div>
                 </div>
+                <div class="user-info-item">
+                    <div class="user-info-label">Comp Current Photos</div>
+                    <div class="user-info-value">
+                        <button type="button" id="unlockPhotosBtn"
+                                style="padding:6px 12px;border:none;border-radius:8px;background:#10b981;color:#fff;font-weight:600;cursor:pointer;">
+                            Unlock all current photos for free
+                        </button>
+                        <div id="unlockPhotosStatus" style="font-size:13px;margin-top:6px;color:var(--text-secondary);"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -387,6 +397,39 @@
     <script src="static/js/analytics.js"></script>
     {% endif %}
     <script>
+        // Admin: unlock this user's current photos for free (two clicks to confirm)
+        (function() {
+            const btn = document.getElementById('unlockPhotosBtn');
+            const status = document.getElementById('unlockPhotosStatus');
+            if (!btn) return;
+            let armed = false;
+            btn.addEventListener('click', async function() {
+                if (!armed) {
+                    armed = true;
+                    btn.textContent = 'Click again to confirm';
+                    btn.style.background = '#f59e0b';
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = 'Unlocking...';
+                try {
+                    const res = await fetch('/api/admin/user/{{ user.id }}/unlock-photos', { method: 'POST' });
+                    const data = await res.json();
+                    if (res.ok && data.success) {
+                        btn.textContent = 'Unlocked';
+                        status.textContent = data.photo_count + ' photos can now be downloaded for free. Future photos still require payment.';
+                    } else {
+                        throw new Error(data.error || 'Failed');
+                    }
+                } catch (e) {
+                    btn.disabled = false; armed = false;
+                    btn.textContent = 'Unlock all current photos for free';
+                    btn.style.background = '#10b981';
+                    status.textContent = 'Error: ' + e.message;
+                }
+            });
+        })();
+
         // Disable right-click and drag on enhanced images
         document.addEventListener('DOMContentLoaded', function() {
             // Disable right-click context menu on images

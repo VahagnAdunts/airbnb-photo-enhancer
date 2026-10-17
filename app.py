@@ -2364,16 +2364,21 @@ def check_payment_status():
             ).first()
         else:
             # Find payment by photo IDs
-            payment = Payment.query.filter_by(
+            completed_payments = Payment.query.filter_by(
                 user_id=current_user.id,
                 status='completed'
-            ).order_by(Payment.completed_at.desc()).first()
+            ).order_by(Payment.completed_at.desc()).all()
             
-            if payment:
-                paid_photo_ids = json.loads(payment.photo_ids) if payment.photo_ids else []
-                # Check if all requested photos are in the paid set
-                if not all(pid in paid_photo_ids for pid in photo_ids):
-                    payment = None
+            # Union of photo IDs across all completed payments (incl. admin comps)
+            paid_photo_ids = set()
+            for p in completed_payments:
+                if p.photo_ids:
+                    paid_photo_ids.update(json.loads(p.photo_ids))
+            
+            payment = completed_payments[0] if completed_payments else None
+            # Check if all requested photos are in the paid set
+            if payment and not all(pid in paid_photo_ids for pid in photo_ids):
+                payment = None
         
         if payment and payment.status == 'completed':
             return jsonify({
@@ -2771,6 +2776,40 @@ def admin_user_photos(user_id):
         logger.error(f"Error loading user photos for admin: {e}", exc_info=True)
         flash('An error occurred while loading user photos.', 'error')
         return redirect(url_for('admin_dashboard'))
+
+@app.route('/api/admin/user/<int:user_id>/unlock-photos', methods=['POST'])
+@login_required
+def admin_unlock_user_photos(user_id):
+    """Admin: grant free download for all photos the user currently has.
+    Does NOT give the account free access; future photos still require payment."""
+    if not is_admin_user(current_user):
+        return jsonify({'error': 'Unauthorized'}), 403
+    try:
+        user = User.query.get_or_404(user_id)
+        photo_ids = [pid for (pid,) in db.session.query(EnhancedImage.id)
+                     .filter(EnhancedImage.user_id == user_id)
+                     .order_by(EnhancedImage.id).all()]
+        if not photo_ids:
+            return jsonify({'error': 'This user has no photos'}), 400
+        now = datetime.utcnow()
+        payment = Payment(
+            user_id=user_id,
+            stripe_session_id=f'admin_comp_{user_id}_{now.timestamp()}',
+            amount=0,
+            currency='usd',
+            photo_count=len(photo_ids),
+            photo_ids=json.dumps(photo_ids),
+            status='completed',
+            completed_at=now,
+        )
+        db.session.add(payment)
+        db.session.commit()
+        logger.info(f"Admin {current_user.email} unlocked {len(photo_ids)} photos for free for user {user.id} ({user.email})")
+        return jsonify({'success': True, 'photo_count': len(photo_ids)})
+    except Exception as e:
+        logger.error(f"Error unlocking photos for user {user_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'error': 'An error occurred'}), 500
 
 @app.route('/admin/anonymous-photos')
 @login_required
